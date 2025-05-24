@@ -49,11 +49,11 @@ const ParseCvOutputSchema = z.object({
   skills: z.array(z.string()).describe('A list of skills mentioned in the CV.'),
   projects: z.array(
     z.object({
-      name: z.string().describe('The name of the project.'),
-      description: z.string().describe('A brief description of the project.'),
-      url: z.string().describe('The URL of the project, if applicable.'),
+      name: z.string().describe('The name of the project. If not explicitly stated, infer a concise name from its description (e.g., "Website Redesign", "Mobile App Development").'),
+      description: z.string().describe('A brief description of the project, its goals, and outcomes.'),
+      url: z.string().describe('The URL of the project, if applicable or mentioned.'),
     })
-  ).describe('Personal projects.'),
+  ).describe('Personal or professional projects, including those embedded within experience descriptions or other sections. Identify distinct initiatives or deliverables.'),
 }).describe('Structured CV data');
 export type ParseCvOutput = z.infer<typeof ParseCvOutputSchema>;
 
@@ -74,7 +74,12 @@ const prompt = ai.definePrompt({
   - Experience: A list of work experiences with job title, company, dates, and description.
   - Education: A list of educational experiences with institution, degree, dates, and description.
   - Skills: A list of skills mentioned in the CV.
-  - Projects: A list of personal projects with name, description, and URL.
+  - Projects: Identify and list distinct projects. These might be in a dedicated "Projects" section OR embedded within descriptions of work experience, personal initiatives, or other parts of the CV.
+    For each project, extract or infer:
+    1.  A concise 'name' (e.g., "Inventory Management System", "Personal Portfolio Website"). If a name isn't explicitly given, create one based on the project's focus.
+    2.  A 'description' detailing what the project was about, its purpose, and key achievements or technologies used.
+    3.  A 'url' if a link to the project is provided.
+    Focus on specific deliverables, initiatives, or standalone pieces of work rather than general job responsibilities.
 
   Ensure that the extracted information is accurate and well-formatted.
 
@@ -94,3 +99,4 @@ const parseCvFlow = ai.defineFlow(
     return output!;
   }
 );
+
