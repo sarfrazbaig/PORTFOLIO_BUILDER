@@ -16,76 +16,88 @@ function PortfolioLayoutContent({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement;
+
+    const setCssVariable = (variableName: string, value: string | undefined) => {
+      if (value === undefined) {
+        if (root.style.getPropertyValue(variableName) !== '') {
+          root.style.removeProperty(variableName);
+        }
+      } else if (root.style.getPropertyValue(variableName) !== value) {
+        root.style.setProperty(variableName, value);
+      }
+    };
+
+    const setAttributeIfChanged = (attrName: string, value: string | undefined) => {
+      const currentValue = root.getAttribute(attrName);
+      if (value === undefined) {
+        if (currentValue !== null) {
+          root.removeAttribute(attrName);
+        }
+      } else if (currentValue !== value) {
+        root.setAttribute(attrName, value);
+      }
+    };
+
+    const clearDynamicStylesAndAttributes = () => {
+      const varsToClear = [
+        '--background', '--foreground', '--primary', '--primary-foreground',
+        '--secondary', '--secondary-foreground', '--accent', '--accent-foreground',
+        '--card', '--card-foreground', '--border', '--input', '--ring',
+        '--font-family-body', '--font-family-heading', '--base-font-size',
+        // Add any other dynamically set HSL color variables here
+        '--muted', '--muted-foreground', '--popover', '--popover-foreground',
+        '--destructive', '--destructive-foreground', '--radius',
+        '--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5'
+      ];
+      varsToClear.forEach(cssVarName => setCssVariable(cssVarName, undefined));
+      
+      ['data-layout-style', 'data-card-style', 'data-spacing-scale'].forEach(attr => {
+        setAttributeIfChanged(attr, undefined);
+      });
+    };
+    
+    let currentRootClassName = root.className;
+    const baseClassName = currentRootClassName.replace(/theme-\S+/g, '').trim();
+
+
     if (theme && theme.themeVariables) {
       // Apply HSL color variables
       Object.entries(theme.themeVariables).forEach(([key, value]) => {
         const cssVarName = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
         if (typeof value === 'string' && (key !== 'fontFamilyBody' && key !== 'fontFamilyHeading' && key !== 'baseFontSize' && key !== 'layoutStyle' && key !== 'cardStyle' && key !== 'spacingScale')) {
-          root.style.setProperty(cssVarName, value);
+          setCssVariable(cssVarName, value);
         }
       });
 
       // Apply font variables
-      if (theme.themeVariables.fontFamilyBody) {
-        root.style.setProperty('--font-family-body', theme.themeVariables.fontFamilyBody);
-      }
-      if (theme.themeVariables.fontFamilyHeading) {
-        root.style.setProperty('--font-family-heading', theme.themeVariables.fontFamilyHeading);
-      }
-      if (theme.themeVariables.baseFontSize) {
-        root.style.setProperty('--base-font-size', theme.themeVariables.baseFontSize);
-      }
-
+      setCssVariable('--font-family-body', theme.themeVariables.fontFamilyBody);
+      setCssVariable('--font-family-heading', theme.themeVariables.fontFamilyHeading);
+      setCssVariable('--base-font-size', theme.themeVariables.baseFontSize);
+      
       // Apply data attributes for styles handled by CSS rules
-      if (theme.themeVariables.layoutStyle) {
-        root.setAttribute('data-layout-style', theme.themeVariables.layoutStyle);
-      } else {
-        root.removeAttribute('data-layout-style');
+      setAttributeIfChanged('data-layout-style', theme.themeVariables.layoutStyle);
+      setAttributeIfChanged('data-card-style', theme.themeVariables.cardStyle);
+      setAttributeIfChanged('data-spacing-scale', theme.themeVariables.spacingScale);
+      
+      // Clear old theme class if new variables are applied
+      if (currentRootClassName !== baseClassName) {
+        root.className = baseClassName;
       }
-      if (theme.themeVariables.cardStyle) {
-        root.setAttribute('data-card-style', theme.themeVariables.cardStyle);
-      } else {
-        root.removeAttribute('data-card-style');
-      }
-       if (theme.themeVariables.spacingScale) {
-        root.setAttribute('data-spacing-scale', theme.themeVariables.spacingScale);
-      } else {
-        root.removeAttribute('data-spacing-scale');
-      }
-       // Clear old theme class if new variables are applied
-      root.className = root.className.replace(/theme-\S+/g, '').trim();
 
     } else if (theme && theme.themeName) {
       // Fallback for older themes or basic AI recommendations
+      clearDynamicStylesAndAttributes();
       const themeClass = `theme-${theme.themeName.toLowerCase().replace(/\s+/g, '-')}`;
-      // Remove other theme classes before adding the new one
-      root.className = root.className.replace(/theme-\S+/g, '').trim();
-      root.classList.add(themeClass);
-      
-      // Clear dynamically set style properties if falling back to class-based theme
-      const varsToClear = [
-        '--background', '--foreground', '--primary', '--primary-foreground',
-        '--secondary', '--secondary-foreground', '--accent', '--accent-foreground',
-        '--card', '--card-foreground', '--border', '--input', '--ring',
-        '--font-family-body', '--font-family-heading', '--base-font-size'
-      ];
-      varsToClear.forEach(cssVarName => root.style.removeProperty(cssVarName));
-      root.removeAttribute('data-layout-style');
-      root.removeAttribute('data-card-style');
-      root.removeAttribute('data-spacing-scale');
+      const newClassName = `${baseClassName} ${themeClass}`.trim();
+      if (currentRootClassName !== newClassName) {
+        root.className = newClassName;
+      }
     } else {
        // No theme or theme variables, ensure no dynamic styles/attributes are lingering
-      const varsToClear = [
-        '--background', '--foreground', '--primary', '--primary-foreground',
-        '--secondary', '--secondary-foreground', '--accent', '--accent-foreground',
-        '--card', '--card-foreground', '--border', '--input', '--ring',
-        '--font-family-body', '--font-family-heading', '--base-font-size'
-      ];
-      varsToClear.forEach(cssVarName => root.style.removeProperty(cssVarName));
-      root.removeAttribute('data-layout-style');
-      root.removeAttribute('data-card-style');
-      root.removeAttribute('data-spacing-scale');
-      root.className = root.className.replace(/theme-\S+/g, '').trim();
+      clearDynamicStylesAndAttributes();
+      if (currentRootClassName !== baseClassName) {
+        root.className = baseClassName;
+      }
     }
   }, [theme]);
 
@@ -148,5 +160,3 @@ export default function PortfolioLayout({ children }: { children: ReactNode }) {
     </PortfolioProvider>
   );
 }
-
-    
