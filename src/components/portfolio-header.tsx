@@ -2,15 +2,15 @@
 'use client';
 
 import Link from 'next/link';
-import { Briefcase, Palette, Menu, X, User, BookOpen, Sparkles, Lightbulb, HomeIcon, Moon, Sun } from 'lucide-react'; // Added more icons
+import { Briefcase, Palette, Menu, X, User, BookOpen, Sparkles, Lightbulb, HomeIcon, Moon, Sun, Edit3, Eye } from 'lucide-react'; // Added Edit3, Eye
 import { Button } from '@/components/ui/button';
 import { usePortfolioContext } from '@/contexts/portfolio-context';
-import { useState, useEffect } from 'react'; // Added useEffect
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useTheme as useNextTheme } from 'next-themes';
 
 export default function PortfolioHeader() {
-  const { cvData, theme, profession } = usePortfolioContext();
+  const { cvData, theme, profession, isEditMode, toggleEditMode } = usePortfolioContext(); // Added isEditMode, toggleEditMode
   const { theme: actualTheme, setTheme: setActualTheme } = useNextTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -23,7 +23,7 @@ export default function PortfolioHeader() {
   const navLinks = [
     { href: '/portfolio', label: 'Home', icon: <HomeIcon size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors" /> },
     { href: '/portfolio/experience', label: 'Experience', icon: <Briefcase size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors" /> },
-    { href: '/portfolio/education', label: 'Education', icon: <BookOpen size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors" /> }, // BookOpen for Education
+    { href: '/portfolio/education', label: 'Education', icon: <BookOpen size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors" /> },
     { href: '/portfolio/projects', label: 'Projects', icon: <Lightbulb size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors" /> },
     { href: '/portfolio/skills', label: 'Skills', icon: <Sparkles size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors" /> },
   ];
@@ -33,7 +33,6 @@ export default function PortfolioHeader() {
   };
 
   if (!mounted) {
-    // To prevent hydration mismatch for theme toggle button
     return <header className="bg-card/90 backdrop-blur-md shadow-md sticky top-0 z-50 border-b border-border/50 h-20" />;
   }
 
@@ -43,7 +42,7 @@ export default function PortfolioHeader() {
         <div className="flex h-20 items-center justify-between">
           <div className="flex items-center">
             <Link href="/portfolio" className="flex items-center space-x-3 group">
-              <User className="h-8 w-8 text-primary group-hover:animate-pulse" /> {/* User icon instead of Briefcase for person */}
+              <User className="h-8 w-8 text-primary group-hover:animate-pulse" />
               <div>
                 <span className="font-bold text-xl tracking-tight text-foreground">
                   {cvData?.personalInformation?.name || 'Your Name'}
@@ -81,6 +80,17 @@ export default function PortfolioHeader() {
                 <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                 <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
               </Button>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={toggleEditMode}
+              aria-label={isEditMode ? "View Portfolio" : "Edit Portfolio"}
+              className="text-muted-foreground hover:text-primary"
+              title={isEditMode ? "View Portfolio" : "Edit Portfolio"}
+            >
+              {isEditMode ? <Eye size={20} /> : <Edit3 size={20} />}
+            </Button>
 
             <div className="md:hidden">
               <Button

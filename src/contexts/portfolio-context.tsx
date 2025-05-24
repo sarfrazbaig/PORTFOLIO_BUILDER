@@ -16,6 +16,9 @@ interface PortfolioContextType {
   setTheme: Dispatch<SetStateAction<RecommendThemeOutput | null>>;
   isLoading: boolean;
   profession: string | null;
+  isEditMode: boolean;
+  toggleEditMode: () => void;
+  updateCvField: (path: string, value: any) => void; // For more granular updates
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
@@ -25,6 +28,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<RecommendThemeOutput | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [profession, setProfession] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     try {
@@ -32,22 +36,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       if (storedCvData) {
         const parsedData = JSON.parse(storedCvData) as ParseCvOutput;
         setCvDataState(parsedData);
-         if (parsedData.experience && parsedData.experience.length > 0) {
-          setProfession(parsedData.experience[0].title);
-        } else if (parsedData.summary) {
-            const summaryWords = parsedData.summary.toLowerCase().split(' ');
-            const commonTitles = ['engineer', 'developer', 'designer', 'manager', 'analyst', 'specialist', 'consultant', 'architect', 'professional'];
-            let inferredProfession = '';
-            for (const title of commonTitles) {
-                if (summaryWords.includes(title)) {
-                    inferredProfession = title.charAt(0).toUpperCase() + title.slice(1);
-                    break;
-                }
-            }
-            setProfession(inferredProfession || "Professional");
-        } else {
-            setProfession("Professional");
-        }
+        updateProfession(parsedData);
       }
       const storedTheme = localStorage.getItem(THEME_RECOMMENDATION_KEY);
       if (storedTheme) {
@@ -55,7 +44,6 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       }
     } catch (e) {
       console.error("Error loading data from localStorage", e);
-      // Clear potentially corrupted data
       localStorage.removeItem(CV_DATA_KEY);
       localStorage.removeItem(THEME_RECOMMENDATION_KEY);
     } finally {
@@ -63,30 +51,37 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const updateProfession = (data: ParseCvOutput | null) => {
+    if (!data) {
+        setProfession("Professional");
+        return;
+    }
+    if (data.experience && data.experience.length > 0 && data.experience[0].title) {
+        setProfession(data.experience[0].title);
+    } else if (data.summary) {
+        const summaryWords = data.summary.toLowerCase().split(' ');
+        const commonTitles = ['engineer', 'developer', 'designer', 'manager', 'analyst', 'specialist', 'consultant', 'architect', 'professional', 'artist', 'writer', 'researcher'];
+        let inferredProfession = '';
+        for (const title of commonTitles) {
+            if (summaryWords.includes(title)) {
+                inferredProfession = title.charAt(0).toUpperCase() + title.slice(1);
+                break;
+            }
+        }
+        setProfession(inferredProfession || "Professional");
+    } else {
+        setProfession("Professional");
+    }
+  };
+
   const setCvData: Dispatch<SetStateAction<ParseCvOutput | null>> = (value) => {
-    setCvDataState(value);
-    if (value === null) {
+    const newData = typeof value === 'function' ? value(cvData) : value;
+    setCvDataState(newData);
+    if (newData === null) {
       localStorage.removeItem(CV_DATA_KEY);
     } else {
-      localStorage.setItem(CV_DATA_KEY, JSON.stringify(value));
-       // Re-derive profession when CV data changes
-      if (typeof value === 'function') {
-        // If value is a function, we'd need to compute the new state first
-        // This case is less common for direct setting but good to be aware of
-        setCvDataState(prevState => {
-          const newState = value(prevState);
-          if (newState?.experience && newState.experience.length > 0) {
-            setProfession(newState.experience[0].title);
-          } else {
-            setProfession("Professional"); // Default or infer from summary
-          }
-          return newState;
-        });
-      } else if (value?.experience && value.experience.length > 0) {
-        setProfession(value.experience[0].title);
-      } else {
-        setProfession("Professional"); // Default or infer from summary
-      }
+      localStorage.setItem(CV_DATA_KEY, JSON.stringify(newData));
+      updateProfession(newData);
     }
   };
 
@@ -98,10 +93,35 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(THEME_RECOMMENDATION_KEY, JSON.stringify(value));
     }
   };
+
+  const toggleEditMode = () => {
+    setIsEditMode(prev => !prev);
+  };
+
+  const updateCvField = (path: string, value: any) => {
+    setCvData(prevData => {
+      if (!prevData) return null;
+      const keys = path.split('.');
+      let currentLevel = { ...prevData };
+      let tempRef: any = currentLevel;
+
+      keys.forEach((key, index) => {
+        if (index === keys.length - 1) {
+          tempRef[key] = value;
+        } else {
+          if (!tempRef[key] || typeof tempRef[key] !== 'object') {
+            tempRef[key] = {}; // Create path if it doesn't exist
+          }
+          tempRef = tempRef[key];
+        }
+      });
+      return currentLevel;
+    });
+  };
   
 
   return (
-    <PortfolioContext.Provider value={{ cvData, setCvData, theme, setTheme, isLoading, profession }}>
+    <PortfolioContext.Provider value={{ cvData, setCvData, theme, setTheme, isLoading, profession, isEditMode, toggleEditMode, updateCvField }}>
       {children}
     </PortfolioContext.Provider>
   );
