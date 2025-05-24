@@ -48,7 +48,8 @@ export default function ProjectDetailPage() {
   const [projectIndex, setProjectIndex] = useState<number | null>(null);
   const [isLoadingProjectData, setIsLoadingProjectData] = useState(true);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [imageError, setImageError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null); // For AI generation errors
+  const [imageLoadError, setImageLoadError] = useState<string | null>(null); // For <Image> component errors
 
   const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
   const [aiEditConfig, setAiEditConfig] = useState<AiEditConfig | null>(null);
@@ -64,6 +65,8 @@ export default function ProjectDetailPage() {
       if (foundIndex !== -1) {
         setProject(cvData.projects[foundIndex] as ProjectType);
         setProjectIndex(foundIndex);
+        setImageError(null); // Reset image error when project changes
+        setImageLoadError(null);
       } else {
         setProject(null);
         setProjectIndex(null);
@@ -89,7 +92,9 @@ export default function ProjectDetailPage() {
     }
     setIsGeneratingImage(true);
     setImageError(null);
+    setImageLoadError(null);
     toast({ title: 'Generating Project Image...', description: 'Please wait a moment.' });
+    console.log("Attempting to generate image for project:", project.name, "with prompt:", project.imagePrompt);
 
     try {
       const result: GenerateImageOutput = await generateImage({ prompt: project.imagePrompt });
@@ -99,13 +104,13 @@ export default function ProjectDetailPage() {
       } else {
         const errorMsg = result.error || 'Unknown error during image generation.';
         setImageError(errorMsg);
-        toast({ title: 'Image Generation Failed', description: errorMsg, variant: 'destructive', duration: 7000 });
+        toast({ title: 'Image Generation Failed', description: errorMsg, variant: 'destructive', duration: 8000 });
       }
     } catch (error: any) {
       console.error('Error generating project image:', error);
       const errorMsg = error.message || 'Failed to generate project image.';
       setImageError(errorMsg);
-      toast({ title: 'Image Generation Error', description: errorMsg, variant: 'destructive', duration: 7000 });
+      toast({ title: 'Image Generation Error', description: errorMsg, variant: 'destructive', duration: 8000 });
     } finally {
       setIsGeneratingImage(false);
     }
@@ -117,7 +122,6 @@ export default function ProjectDetailPage() {
     if (isEditMode) return '';
     return placeholderKey ? placeholderTexts[placeholderKey] : 'Not specified.';
   };
-
 
   if (isLoadingProjectData) {
     return (
@@ -147,8 +151,26 @@ export default function ProjectDetailPage() {
       </div>
     );
   }
-
+  
   const currentProjectName = project?.name || decodedProjectName;
+
+  let imageSourceToDisplay = `https://placehold.co/800x450.png?text=${encodeURIComponent(project.name || 'Project')}`;
+  let altTextForImage = `${project.name || 'Project'} placeholder`;
+
+  if (project.imageDataUri) {
+    imageSourceToDisplay = project.imageDataUri;
+    altTextForImage = `${project.name || 'Project'} main image`;
+  } else if (isGeneratingImage) {
+    imageSourceToDisplay = `https://placehold.co/800x450.png?text=Generating...`;
+    altTextForImage = `Generating image for ${project.name || 'Project'}`;
+  } else if (imageError) { // Error from AI generation
+    imageSourceToDisplay = `https://placehold.co/800x450.png?text=AI+Error`;
+    altTextForImage = `Error generating image for ${project.name || 'Project'}`;
+  } else if (imageLoadError) { // Error from <Image> component itself
+     imageSourceToDisplay = `https://placehold.co/800x450.png?text=Load+Fail`;
+     altTextForImage = `Failed to load image for ${project.name || 'Project'}`;
+  }
+
 
   const renderEditableSection = (
     fieldKey: keyof ProjectType,
@@ -215,7 +237,7 @@ export default function ProjectDetailPage() {
             />
             ) : (
             <div className="flex flex-wrap gap-2">
-                {techContent.split(',').map((tech: string) => tech.trim() && (
+                {techContent.split(/[,;\n]+/).map((tech: string) => tech.trim() && (
                 <span key={tech.trim()} className="bg-primary/10 text-primary text-sm px-3 py-1 rounded-full font-medium">
                     {tech.trim()}
                 </span>
@@ -253,7 +275,7 @@ export default function ProjectDetailPage() {
 
       <article className="bg-card p-6 md:p-10 rounded-xl shadow-2xl border border-border/50">
         <header className="mb-8 md:mb-12">
-          {isEditMode ? (
+          {isEditMode && projectIndex !== null ? (
             <Input
               value={project.name || ''}
               onChange={(e) => handleProjectFieldChange('name', e.target.value)}
@@ -289,30 +311,36 @@ export default function ProjectDetailPage() {
             <section id="project-overview">
               <h2 className="text-2xl font-semibold text-foreground mb-4 flex items-center"><Lightbulb className="mr-3 text-accent" />Overview</h2>
               
-              <div className="relative aspect-[16/9] rounded-lg overflow-hidden shadow-lg mb-6 border border-border bg-muted">
-                {project.imageDataUri ? (
-                  <NextImage
-                    src={project.imageDataUri}
-                    alt={`${project.name || 'Project'} main image`}
-                    layout="fill"
-                    objectFit="cover"
-                    className="transition-transform duration-300 hover:scale-105"
-                  />
-                ) : (
-                  <NextImage
-                    src={`https://placehold.co/800x450.png`}
-                    alt={`${project.name || 'Project'} placeholder`}
-                    layout="fill"
-                    objectFit="cover"
-                    data-ai-hint={project.imagePrompt || "project details"}
-                  />
-                )}
+              <div className="relative aspect-[16/9] rounded-lg overflow-hidden shadow-lg mb-6 border border-border bg-muted group">
+                <NextImage
+                  src={imageSourceToDisplay}
+                  alt={altTextForImage}
+                  layout="fill"
+                  objectFit="cover"
+                  data-ai-hint={project.imagePrompt || "project details"}
+                  className="transition-transform duration-300 group-hover:scale-105"
+                  onError={() => {
+                      console.warn("NextImage failed to load src:", imageSourceToDisplay);
+                      if (!imageSourceToDisplay.includes('placehold.co')) { // Avoid loop if placehold.co itself fails
+                          setImageLoadError("Image element failed to load source.");
+                      }
+                  }}
+                  key={project.imageDataUri || project.name} // Force re-render if URI changes
+                />
                 {isGeneratingImage && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
                         <Loader2 className="h-12 w-12 text-primary animate-spin"/>
+                        <p className="ml-2 text-primary-foreground font-semibold">Generating...</p>
                     </div>
                 )}
               </div>
+              
+              {(imageError || imageLoadError) && !isGeneratingImage && (
+                  <p className="text-sm text-destructive mt-2 text-center">
+                    {imageError ? `AI Error: ${imageError}` : imageLoadError ? `Display Error: ${imageLoadError}`: ''}
+                  </p>
+              )}
+
 
               {isEditMode && project.imagePrompt && projectIndex !== null && (
                 <div className="my-4">
@@ -320,7 +348,6 @@ export default function ProjectDetailPage() {
                     {isGeneratingImage ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ImageIcon className="mr-2 h-5 w-5" />}
                     {project.imageDataUri ? 'Regenerate Project Image' : 'Generate Project Image'}
                   </Button>
-                  {imageError && <p className="text-sm text-destructive mt-2">{imageError}</p>}
                   <p className="text-xs text-muted-foreground mt-1 text-center">Using prompt: &quot;{project.imagePrompt}&quot;</p>
                 </div>
               )}
@@ -383,3 +410,4 @@ export default function ProjectDetailPage() {
     </div>
   );
 }
+
