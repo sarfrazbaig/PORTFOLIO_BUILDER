@@ -2,23 +2,24 @@
 'use client';
 
 import Link from 'next/link';
-import { Briefcase, Palette, Menu, X, User, BookOpen, Sparkles, Lightbulb, HomeIcon, Moon, Sun, Edit3, Eye } from 'lucide-react'; // Added Edit3, Eye
+import { Briefcase, Palette, Menu, X, User, BookOpen, Sparkles, Lightbulb, HomeIcon, Moon, Sun, Edit3, Eye, Trash2, RotateCcw } from 'lucide-react'; // Added Trash2 or RotateCcw
 import { Button } from '@/components/ui/button';
 import { usePortfolioContext } from '@/contexts/portfolio-context';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useTheme as useNextTheme } from 'next-themes';
+import { useRouter } from 'next/navigation'; // Added useRouter
 
 export default function PortfolioHeader() {
-  const { cvData, theme, profession, isEditMode, toggleEditMode } = usePortfolioContext(); // Added isEditMode, toggleEditMode
+  const { cvData, theme, profession, isEditMode, toggleEditMode, setCvData, setTheme: setPortfolioTheme } = usePortfolioContext(); // Added setCvData, setPortfolioTheme
   const { theme: actualTheme, setTheme: setActualTheme } = useNextTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const router = useRouter(); // Initialized useRouter
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
 
   const navLinks = [
     { href: '/portfolio', label: 'Home', icon: <HomeIcon size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors" /> },
@@ -30,6 +31,14 @@ export default function PortfolioHeader() {
 
   const toggleTheme = () => {
     setActualTheme(actualTheme === 'light' ? 'dark' : 'light');
+  };
+
+  const handleDiscardPortfolio = () => {
+    if (window.confirm('Are you sure you want to discard all portfolio data and start over? This action cannot be undone.')) {
+      setCvData(null);
+      setPortfolioTheme(null);
+      router.push('/dashboard');
+    }
   };
 
   if (!mounted) {
@@ -63,7 +72,7 @@ export default function PortfolioHeader() {
             ))}
           </nav>
           
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 sm:space-x-2">
             {theme && (
               <div className="hidden sm:flex items-center space-x-2 bg-primary/10 px-3 py-1.5 rounded-lg shadow-sm">
                 <Palette size={16} className="text-primary/80"/>
@@ -76,6 +85,7 @@ export default function PortfolioHeader() {
                 onClick={toggleTheme}
                 aria-label="Toggle theme"
                 className="hidden md:inline-flex text-muted-foreground hover:text-primary"
+                title="Toggle light/dark mode"
               >
                 <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                 <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -90,6 +100,17 @@ export default function PortfolioHeader() {
               title={isEditMode ? "View Portfolio" : "Edit Portfolio"}
             >
               {isEditMode ? <Eye size={20} /> : <Edit3 size={20} />}
+            </Button>
+
+            <Button
+              variant="destructive"
+              size="icon"
+              onClick={handleDiscardPortfolio}
+              aria-label="Discard Portfolio"
+              className="text-destructive-foreground bg-destructive/90 hover:bg-destructive"
+              title="Discard Portfolio & Start Over"
+            >
+              <RotateCcw size={20} />
             </Button>
 
             <div className="md:hidden">
@@ -132,6 +153,7 @@ export default function PortfolioHeader() {
                 }}
                 aria-label="Toggle theme"
                 className="w-full justify-start text-muted-foreground hover:text-primary py-3 text-base flex items-center"
+                title="Toggle light/dark mode"
               >
                 {actualTheme === 'light' ? <Moon size={18} className="mr-2"/> : <Sun size={18} className="mr-2"/>}
                 Toggle Theme
