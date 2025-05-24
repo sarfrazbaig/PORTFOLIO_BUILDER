@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import type { ParseCvOutput } from '@/ai/flows/cv-parser';
 import type { RecommendThemeOutput } from '@/ai/flows/ai-theme-recommendation';
 import { generateCustomThemes, type CustomThemePreferencesInput, type CustomThemeOutput } from '@/ai/flows/ai-custom-theme-generator';
+import { generateImage, type GenerateImageInput, type GenerateImageOutput } from '@/ai/flows/generate-image-flow';
 import type { PortfolioTheme } from '@/contexts/portfolio-context';
 import CvUploadForm from '@/components/cv-upload-form';
 import ParsedCvDisplay from '@/components/parsed-cv-display';
@@ -13,7 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input as ShadInput } from '@/components/ui/input'; // Renamed to avoid conflict with HTML Input
+import { Input as ShadInput } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Info, Eye, Palette, Sparkles, UploadCloud, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
@@ -25,6 +26,13 @@ import { useRouter } from 'next/navigation';
 const CV_DATA_KEY = 'cvPortfolioData';
 const THEME_RECOMMENDATION_KEY = 'cvPortfolioTheme';
 
+// Extend CustomThemeOutput to include image generation state
+interface CustomThemeWithImageState extends CustomThemeOutput {
+  imageDataUri?: string;
+  isLoadingImage?: boolean;
+  error?: string; // To store image generation errors
+}
+
 export default function DashboardPage() {
   const [parsedCvData, setParsedCvData] = useState<ParseCvOutput | null>(null);
   const [initialThemeRecommendation, setInitialThemeRecommendation] = useState<RecommendThemeOutput | null>(null);
@@ -35,7 +43,7 @@ export default function DashboardPage() {
     mode: 'system',
     industryInspiration: '',
   });
-  const [generatedCustomThemes, setGeneratedCustomThemes] = useState<CustomThemeOutput[]>([]);
+  const [generatedCustomThemesWithImages, setGeneratedCustomThemesWithImages] = useState<CustomThemeWithImageState[]>([]);
   const [isGeneratingThemes, setIsGeneratingThemes] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
@@ -50,10 +58,7 @@ export default function DashboardPage() {
     if (storedTheme) {
       try {
         const theme = JSON.parse(storedTheme) as PortfolioTheme;
-        // If it's an old theme format (just name/reason), or a new one without themeVariables (less likely but possible)
-        // We only set initialThemeRecommendation if it's the basic AI one.
-        // Custom themes with themeVariables are handled differently now.
-        if (!theme.themeVariables) { 
+        if (!theme.themeVariables) {
             setInitialThemeRecommendation({themeName: theme.themeName, reason: theme.reason || ''});
         }
       } catch (e) { console.error("Failed to parse theme recommendation", e); localStorage.removeItem(THEME_RECOMMENDATION_KEY); }
@@ -67,7 +72,6 @@ export default function DashboardPage() {
 
   const handleInitialThemeRecommended = (data: RecommendThemeOutput) => {
     setInitialThemeRecommendation(data);
-    // Save the basic recommendation. This might be overwritten if a custom theme is chosen.
     localStorage.setItem(THEME_RECOMMENDATION_KEY, JSON.stringify(data));
   };
 
@@ -85,18 +89,60 @@ export default function DashboardPage() {
       return;
     }
     setIsGeneratingThemes(true);
-    setGeneratedCustomThemes([]); // Clear previous custom themes
-    toast({ title: "Generating Custom Themes...", description: "The AI is crafting some options for you." });
+    setGeneratedCustomThemesWithImages([]);
+    toast({ title: "Generating Custom Themes...", description: "The AI is crafting options and preview images." });
     try {
       const input: CustomThemePreferencesInput = {
         ...customThemePreferences,
-        // Provide some context from CV for theme generation
         currentProfession: parsedCvData?.experience?.[0]?.title || parsedCvData?.summary?.split(' ')[0] || "Professional",
       };
       const result = await generateCustomThemes(input);
+      
       if (result.themes && result.themes.length > 0) {
-        setGeneratedCustomThemes(result.themes);
-        toast({ title: "Custom Themes Generated!", description: "Choose your favorite to proceed." });
+        toast({ title: "Custom Themes Generated!", description: "Now generating preview images..." });
+        const themesWithLoadingState: CustomThemeWithImageState[] = result.themes.map(theme => ({ ...theme, isLoadingImage: true, imageDataUri: undefined, error: undefined }));
+        setGeneratedCustomThemesWithImages(themesWithLoadingState);
+
+        themesWithLoadingState.forEach(async (theme, index) => {
+          let finalPrompt = theme.previewImagePrompt || "abstract theme representation";
+          if (!finalPrompt.toLowerCase().startsWith("generate") && !finalPrompt.toLowerCase().startsWith("photo") && !finalPrompt.toLowerCase().startsWith("image")) {
+            finalPrompt = `Generate a conceptual image representing: ${finalPrompt}`;
+          }
+
+          if (finalPrompt.trim() !== "") {
+            try {
+              const imageResult = await generateImage({ prompt: finalPrompt });
+              setGeneratedCustomThemesWithImages(prevThemes => {
+                const newThemes = [...prevThemes];
+                newThemes[index] = {
+                  ...newThemes[index],
+                  imageDataUri: imageResult.imageDataUri,
+                  isLoadingImage: false,
+                  error: imageResult.imageDataUri ? undefined : imageResult.error || "Failed to generate image.",
+                };
+                return newThemes;
+              });
+              if (imageResult.error && !imageResult.imageDataUri) {
+                toast({ title: `Image Gen Error: ${theme.themeName}`, description: imageResult.error, variant: "destructive", duration: 8000 });
+              }
+            } catch (imgError: any) {
+              console.error(`Error generating image for theme ${theme.themeName}:`, imgError);
+              toast({ title: `Image Gen Failed: ${theme.themeName}`, description: imgError.message || "Unknown error.", variant: "destructive", duration: 8000 });
+              setGeneratedCustomThemesWithImages(prevThemes => {
+                const newThemes = [...prevThemes];
+                newThemes[index] = { ...newThemes[index], isLoadingImage: false, error: imgError.message || "Image generation process failed." };
+                return newThemes;
+              });
+            }
+          } else {
+            setGeneratedCustomThemesWithImages(prevThemes => {
+              const newThemes = [...prevThemes];
+              newThemes[index] = { ...newThemes[index], isLoadingImage: false, error: "No valid prompt for image." };
+              return newThemes;
+            });
+            toast({ title: `Image Skipped: ${theme.themeName}`, description: "No preview image prompt provided.", variant: "default" });
+          }
+        });
       } else {
         toast({ title: "No Themes Generated", description: "The AI couldn't generate themes. Try adjusting preferences.", variant: "destructive" });
       }
@@ -104,17 +150,17 @@ export default function DashboardPage() {
       console.error("Custom theme generation error:", error);
       toast({ title: "Theme Generation Failed", description: "An error occurred. Please try again.", variant: "destructive" });
     } finally {
-      setIsGeneratingThemes(false);
+      setIsGeneratingThemes(false); // This should be set after all image attempts ideally, but for now this is okay.
     }
   };
 
-  const handleSelectCustomTheme = (theme: CustomThemeOutput) => {
-    // Save the full custom theme object, including themeVariables
+  const handleSelectCustomTheme = (theme: CustomThemeWithImageState) => {
     const portfolioThemeToSave: PortfolioTheme = {
-      themeName: theme.themeName, // e.g., "Ocean Breeze Dark"
-      reason: theme.description, // Use AI's description of the custom theme
+      themeName: theme.themeName,
+      reason: theme.description,
       themeVariables: theme.themeVariables,
       previewImagePrompt: theme.previewImagePrompt,
+      // We don't store the imageDataUri in localStorage as it can be large
     };
     localStorage.setItem(THEME_RECOMMENDATION_KEY, JSON.stringify(portfolioThemeToSave));
     toast({ title: "Theme Selected!", description: `"${theme.themeName}" applied. Redirecting to portfolio...` });
@@ -125,7 +171,7 @@ export default function DashboardPage() {
     if (window.confirm("Are you sure you want to clear current CV data and start over?")) {
       setParsedCvData(null);
       setInitialThemeRecommendation(null);
-      setGeneratedCustomThemes([]); // Also clear generated themes
+      setGeneratedCustomThemesWithImages([]);
       localStorage.removeItem(CV_DATA_KEY);
       localStorage.removeItem(THEME_RECOMMENDATION_KEY);
       toast({ title: "Data Cleared", description: "Ready for a new CV upload." });
@@ -143,7 +189,6 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* "Start Over" button is displayed if CV data exists */}
       {parsedCvData && (
         <div className="text-center my-6">
           <Button onClick={handleStartOver} variant="outline" size="lg">
@@ -153,17 +198,14 @@ export default function DashboardPage() {
         </div>
       )}
       
-      {/* CV Upload Form is displayed if no CV data exists */}
       {!parsedCvData && (
         <CvUploadForm
           onCvParsed={handleCvParsed}
           onThemeRecommended={handleInitialThemeRecommended}
           onLoadingChange={handleLoadingChange}
-          // currentCvData prop removed as it's implicitly null when this renders
         />
       )}
 
-      {/* Loading spinner while CV is processing */}
       {isLoadingCv && (
         <Card className="mt-8 shadow-md">
           <CardContent className="p-6">
@@ -175,16 +217,13 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Content displayed after CV is parsed and not currently loading CV */}
       {!isLoadingCv && parsedCvData && (
         <>
-          {/* Display initial AI theme recommendation if no custom themes have been generated yet */}
-          {initialThemeRecommendation && !generatedCustomThemes.length && (
+          {initialThemeRecommendation && !generatedCustomThemesWithImages.length && !isGeneratingThemes && (
             <ThemeRecommendationDisplay recommendation={initialThemeRecommendation} />
           )}
           <Separator />
           
-          {/* Custom Theme Generation Section */}
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl flex items-center"><Palette className="mr-3 text-primary"/>Customize Your Theme</CardTitle>
@@ -243,8 +282,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Loading spinner while custom themes are generating */}
-          {isGeneratingThemes && (
+          {isGeneratingThemes && generatedCustomThemesWithImages.length === 0 && ( // Show this only if NO themes are displayed yet
             <Card className="mt-8 shadow-md">
               <CardContent className="p-6">
                 <div className="flex flex-col items-center justify-center py-12 space-y-4">
@@ -255,29 +293,48 @@ export default function DashboardPage() {
             </Card>
           )}
 
-          {/* Display generated custom themes */}
-          {generatedCustomThemes.length > 0 && (
+          {generatedCustomThemesWithImages.length > 0 && (
             <div className="space-y-6 mt-8">
               <h2 className="text-2xl font-semibold text-center text-primary">Select Your Custom Theme</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {generatedCustomThemes.map((theme, index) => (
+                {generatedCustomThemesWithImages.map((theme, index) => (
                   <Card key={index} className="shadow-md hover:shadow-xl transition-shadow flex flex-col">
-                    <CardHeader>
-                      <div className="aspect-video bg-muted rounded-md overflow-hidden mb-4">
+                    <CardHeader className="p-4"> {/* Reduced padding for header */}
+                      <div className="aspect-video bg-muted rounded-md overflow-hidden mb-3 relative">
+                        {theme.isLoadingImage && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                          </div>
+                        )}
                         <Image 
-                          src={`https://placehold.co/600x338.png`} // Placeholder image URL
+                          src={
+                            theme.isLoadingImage ? `https://placehold.co/600x338.png?text=Loading...` :
+                            theme.imageDataUri ? theme.imageDataUri :
+                            theme.error ? `https://placehold.co/600x338.png?text=Error` :
+                            `https://placehold.co/600x338.png` 
+                          }
                           alt={`Preview for ${theme.themeName}`} 
                           width={600} 
                           height={338} 
                           className="object-cover w-full h-full"
-                          data-ai-hint={theme.previewImagePrompt || "abstract theme"} // Use AI hint from theme data
+                          data-ai-hint={theme.previewImagePrompt || "abstract theme"}
+                          onError={(e) => { // Basic error handling for Image component itself
+                            e.currentTarget.src = `https://placehold.co/600x338.png?text=LoadFail`;
+                            setGeneratedCustomThemesWithImages(prev => {
+                                const newThemes = [...prev];
+                                if(newThemes[index]) newThemes[index].error = "Image element failed to load source.";
+                                return newThemes;
+                            });
+                          }}
                         />
                       </div>
                       <CardTitle className="text-xl text-accent">{theme.themeName}</CardTitle>
-                      <CardDescription>{theme.description}</CardDescription>
+                      <CardDescription className="text-sm">{theme.description}</CardDescription>
+                       {theme.error && !theme.isLoadingImage && (
+                        <p className="text-xs text-destructive mt-1">Image Error: {theme.error.length > 100 ? theme.error.substring(0,100) + '...' : theme.error}</p>
+                      )}
                     </CardHeader>
-                    <CardContent className="flex-grow flex flex-col justify-end">
-                       {/* This button used to link to /dashboard/portfolio, now handled by router.push after saving */}
+                    <CardContent className="p-4 pt-0 flex-grow flex flex-col justify-end">
                        <Button onClick={() => handleSelectCustomTheme(theme)} className="w-full mt-auto">
                          Select & View Portfolio <Eye className="ml-2 h-4 w-4"/>
                        </Button>
@@ -288,13 +345,11 @@ export default function DashboardPage() {
             </div>
           )}
           
-          {/* Display Parsed CV Data */}
           <Separator className="my-8"/>
           <ParsedCvDisplay cvData={parsedCvData} />
         </>
       )}
 
-      {/* Initial placeholder message when no CV data and not loading */}
       {!isLoading && !parsedCvData && (
          <Card className="mt-8 shadow-md">
           <CardContent className="p-6">
