@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react'; // Added useRef
 import { useParams, useRouter } from 'next/navigation';
 import { usePortfolioContext } from '@/contexts/portfolio-context';
 import type { ParseCvOutput } from '@/ai/flows/cv-parser';
@@ -10,8 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, ExternalLink, Lightbulb, Code, Zap, Target, Users, ShieldCheck, Sparkles, Image as ImageIcon, Loader2 } from 'lucide-react';
-import NextImage from 'next/image'; // Renamed to avoid conflict with ImageIcon
+import { ArrowLeft, ExternalLink, Lightbulb, Code, Zap, Target, Users, ShieldCheck, Sparkles, Image as ImageIcon, Loader2, Upload } from 'lucide-react'; // Added Upload
+import NextImage from 'next/image'; 
 import { Separator } from '@/components/ui/separator';
 import AiHelperDialog from '@/components/ai-helper-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -23,7 +23,6 @@ type ProjectType = ParseCvOutput['projects'][0] & {
   challengesSolutions?: string;
   projectGoals?: string;
   technologiesUsed?: string;
-  // imageDataUri and imagePrompt are now part of ParseCvOutput['projects'][0]
 };
 
 const placeholderTexts = {
@@ -47,9 +46,11 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<ProjectType | null>(null);
   const [projectIndex, setProjectIndex] = useState<number | null>(null);
   const [isLoadingProjectData, setIsLoadingProjectData] = useState(true);
+  
+  const projectImageFileInputRef = useRef<HTMLInputElement>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [imageError, setImageError] = useState<string | null>(null); // For AI generation errors
-  const [imageLoadError, setImageLoadError] = useState<string | null>(null); // For <Image> component errors
+  const [imageError, setImageError] = useState<string | null>(null); 
+  const [imageLoadError, setImageLoadError] = useState<string | null>(null);
 
   const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
   const [aiEditConfig, setAiEditConfig] = useState<AiEditConfig | null>(null);
@@ -63,9 +64,19 @@ export default function ProjectDetailPage() {
     if (cvData && decodedProjectName) {
       const foundIndex = cvData.projects.findIndex(p => p.name === decodedProjectName);
       if (foundIndex !== -1) {
-        setProject(cvData.projects[foundIndex] as ProjectType);
+        // Ensure all optional text fields are at least empty strings if in edit mode and not present
+        const currentProject = cvData.projects[foundIndex];
+        const initializedProject: ProjectType = {
+            ...currentProject,
+            keyFeatures: currentProject.keyFeatures || '',
+            myRole: currentProject.myRole || '',
+            challengesSolutions: currentProject.challengesSolutions || '',
+            projectGoals: currentProject.projectGoals || '',
+            technologiesUsed: currentProject.technologiesUsed || '',
+        };
+        setProject(initializedProject);
         setProjectIndex(foundIndex);
-        setImageError(null); // Reset image error when project changes
+        setImageError(null); 
         setImageLoadError(null);
       } else {
         setProject(null);
@@ -85,6 +96,32 @@ export default function ProjectDetailPage() {
     setIsAiDialogOpen(true);
   };
 
+  const handleProjectImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) {
+      toast({ title: 'No file selected', variant: 'destructive' });
+      return;
+    }
+    if (projectIndex === null) return;
+
+    const file = event.target.files[0];
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid File Type', description: 'Please select an image file.', variant: 'destructive' });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      updateCvField(`projects.${projectIndex}.imageDataUri`, reader.result as string);
+      setImageError(null);
+      setImageLoadError(null);
+      toast({ title: 'Project Image Uploaded', description: 'The project image has been updated.' });
+    };
+    reader.onerror = () => {
+      toast({ title: 'File Read Error', description: 'Could not read the uploaded project image.', variant: 'destructive' });
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleGenerateProjectImage = async () => {
     if (!project || !project.imagePrompt || projectIndex === null) {
       toast({ title: 'Cannot Generate Image', description: 'Project data or image prompt is missing.', variant: 'destructive' });
@@ -94,8 +131,7 @@ export default function ProjectDetailPage() {
     setImageError(null);
     setImageLoadError(null);
     toast({ title: 'Generating Project Image...', description: 'Please wait a moment.' });
-    console.log("Attempting to generate image for project:", project.name, "with prompt:", project.imagePrompt);
-
+    
     try {
       const result: GenerateImageOutput = await generateImage({ prompt: project.imagePrompt });
       if (result.imageDataUri) {
@@ -118,10 +154,11 @@ export default function ProjectDetailPage() {
 
   const getProjectField = (fieldName: keyof ProjectType, placeholderKey?: keyof typeof placeholderTexts) => {
     const value = project && project[fieldName];
-    if (value) return String(value);
-    if (isEditMode) return '';
+    if (typeof value === 'string') return value; // Return even if empty string
+    if (isEditMode) return ''; // For edit mode, ensure it's an empty string for controlled input
     return placeholderKey ? placeholderTexts[placeholderKey] : 'Not specified.';
   };
+
 
   if (isLoadingProjectData) {
     return (
@@ -163,10 +200,10 @@ export default function ProjectDetailPage() {
   } else if (isGeneratingImage) {
     imageSourceToDisplay = `https://placehold.co/800x450.png?text=Generating...`;
     altTextForImage = `Generating image for ${project.name || 'Project'}`;
-  } else if (imageError) { // Error from AI generation
+  } else if (imageError) { 
     imageSourceToDisplay = `https://placehold.co/800x450.png?text=AI+Error`;
     altTextForImage = `Error generating image for ${project.name || 'Project'}`;
-  } else if (imageLoadError) { // Error from <Image> component itself
+  } else if (imageLoadError) { 
      imageSourceToDisplay = `https://placehold.co/800x450.png?text=Load+Fail`;
      altTextForImage = `Failed to load image for ${project.name || 'Project'}`;
   }
@@ -186,7 +223,7 @@ export default function ProjectDetailPage() {
         <div className="relative">
           {isEditMode && projectIndex !== null ? (
             <Textarea
-              value={content}
+              value={content} // Already ensures string
               onChange={(e) => handleProjectFieldChange(fieldKey, e.target.value)}
               placeholder={placeholderTexts[placeholderKey]}
               className="text-lg text-muted-foreground leading-relaxed whitespace-pre-line bg-transparent border-2 border-dashed border-primary/30 focus:border-primary min-h-[100px] pr-10"
@@ -194,7 +231,7 @@ export default function ProjectDetailPage() {
             />
           ) : (
             <p className="text-lg text-muted-foreground leading-relaxed whitespace-pre-line">
-              {content}
+              {content || (placeholderKey ? placeholderTexts[placeholderKey] : 'Not specified.')}
             </p>
           )}
           {isEditMode && projectIndex !== null && (
@@ -213,7 +250,7 @@ export default function ProjectDetailPage() {
             </Button>
           )}
         </div>
-        {!isEditMode && (content === placeholderTexts[placeholderKey]) && <p className="mt-3 text-sm text-muted-foreground/80 italic">Hint: Use Edit Mode and the AI Helper to expand on this section!</p>}
+        {!isEditMode && (content === placeholderTexts[placeholderKey] || content === '') && <p className="mt-3 text-sm text-muted-foreground/80 italic">Hint: Use Edit Mode and the AI Helper to expand on this section!</p>}
       </section>
     );
   };
@@ -229,7 +266,7 @@ export default function ProjectDetailPage() {
             <div className="relative">
             {isEditMode && projectIndex !== null ? (
             <Textarea
-                value={techContent}
+                value={techContent} // Already ensures string
                 onChange={(e) => handleProjectFieldChange('technologiesUsed', e.target.value)}
                 placeholder={placeholderTexts.technologiesUsed}
                 className="text-muted-foreground bg-transparent border-2 border-dashed border-primary/30 focus:border-primary min-h-[80px] pr-10"
@@ -237,7 +274,7 @@ export default function ProjectDetailPage() {
             />
             ) : (
             <div className="flex flex-wrap gap-2">
-                {techContent.split(/[,;\n]+/).map((tech: string) => tech.trim() && (
+                {(techContent || '').split(/[,;\n]+/).map((tech: string) => tech.trim() && (
                 <span key={tech.trim()} className="bg-primary/10 text-primary text-sm px-3 py-1 rounded-full font-medium">
                     {tech.trim()}
                 </span>
@@ -260,7 +297,7 @@ export default function ProjectDetailPage() {
                 </Button>
             )}
             </div>
-            {!isEditMode && (techContent === placeholderTexts.technologiesUsed) && <p className="mt-3 text-xs text-muted-foreground/80 italic">Update this list with actual technologies used.</p>}
+            {!isEditMode && (techContent === placeholderTexts.technologiesUsed || techContent === '') && <p className="mt-3 text-xs text-muted-foreground/80 italic">Update this list with actual technologies used.</p>}
         </CardContent>
         </Card>
     );
@@ -320,12 +357,11 @@ export default function ProjectDetailPage() {
                   data-ai-hint={project.imagePrompt || "project details"}
                   className="transition-transform duration-300 group-hover:scale-105"
                   onError={() => {
-                      console.warn("NextImage failed to load src:", imageSourceToDisplay);
-                      if (!imageSourceToDisplay.includes('placehold.co')) { // Avoid loop if placehold.co itself fails
+                      if (!imageSourceToDisplay.includes('placehold.co')) { 
                           setImageLoadError("Image element failed to load source.");
                       }
                   }}
-                  key={project.imageDataUri || project.name} // Force re-render if URI changes
+                  key={project.imageDataUri || project.name} 
                 />
                 {isGeneratingImage && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -341,14 +377,27 @@ export default function ProjectDetailPage() {
                   </p>
               )}
 
-
-              {isEditMode && project.imagePrompt && projectIndex !== null && (
-                <div className="my-4">
-                  <Button onClick={handleGenerateProjectImage} disabled={isGeneratingImage} className="w-full">
-                    {isGeneratingImage ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ImageIcon className="mr-2 h-5 w-5" />}
-                    {project.imageDataUri ? 'Regenerate Project Image' : 'Generate Project Image'}
+              {isEditMode && projectIndex !== null && (
+                <div className="my-4 space-y-2 md:space-y-0 md:flex md:flex-wrap md:gap-2">
+                  {project.imagePrompt && (
+                    <Button onClick={handleGenerateProjectImage} disabled={isGeneratingImage} className="w-full md:w-auto flex-grow">
+                      {isGeneratingImage ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
+                      {project.imageDataUri ? 'Regenerate Image (AI)' : 'Generate Image (AI)'}
+                    </Button>
+                  )}
+                  <Button onClick={() => projectImageFileInputRef.current?.click()} className="w-full md:w-auto flex-grow" variant="outline">
+                    <Upload className="mr-2 h-5 w-5" />
+                    {project.imageDataUri ? 'Upload New Image' : 'Upload Image'}
                   </Button>
-                  <p className="text-xs text-muted-foreground mt-1 text-center">Using prompt: &quot;{project.imagePrompt}&quot;</p>
+                  <input
+                    type="file"
+                    ref={projectImageFileInputRef}
+                    onChange={handleProjectImageUpload}
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    id={`project-image-upload-${projectIndex}`}
+                  />
+                   {project.imagePrompt && <p className="text-xs text-muted-foreground mt-1 text-center basis-full">AI prompt: &quot;{project.imagePrompt}&quot;</p>}
                 </div>
               )}
               
@@ -410,4 +459,3 @@ export default function ProjectDetailPage() {
     </div>
   );
 }
-

@@ -1,17 +1,19 @@
 
 'use client';
 
-import { useState } from 'react'; // Added useState
+import { useState, useRef } from 'react';
 import { usePortfolioContext } from '@/contexts/portfolio-context';
+import { generateImage, type GenerateImageOutput } from '@/ai/flows/generate-image-flow';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Mail, Phone, Linkedin, Github, UserCircle, Sparkles, Edit3 } from 'lucide-react';
+import { Mail, Phone, Linkedin, Github, UserCircle, Sparkles, Upload, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import AiHelperDialog from '@/components/ai-helper-dialog'; // Added AiHelperDialog import
+import AiHelperDialog from '@/components/ai-helper-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 const getInitials = (name?: string) => {
   if (!name) return '??';
@@ -30,6 +32,11 @@ export default function PortfolioHomePage() {
   const { cvData, profession, isEditMode, updateCvField, setCvData } = usePortfolioContext();
   const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
   const [aiEditConfig, setAiEditConfig] = useState<AiEditConfig | null>(null);
+  
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
+  const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   if (!cvData) return null; 
 
@@ -50,6 +57,10 @@ export default function PortfolioHomePage() {
         const newExperience = [...cvData.experience];
         newExperience[0] = { ...newExperience[0], title: e.target.value };
         setCvData({ ...cvData, experience: newExperience });
+    } else if (cvData) { // If no experience, update a placeholder or a new field if desired
+        // For now, this might update the derived profession visually but won't persist robustly without a dedicated field
+        // This is a placeholder for more complex profession editing if needed
+        updateCvField('personalInformation.customProfession', e.target.value); // Example: saving to a custom field
     }
   };
 
@@ -58,19 +69,101 @@ export default function PortfolioHomePage() {
     setIsAiDialogOpen(true);
   };
 
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) {
+      toast({ title: 'No file selected', variant: 'destructive' });
+      return;
+    }
+    const file = event.target.files[0];
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid File Type', description: 'Please select an image file.', variant: 'destructive' });
+      return;
+    }
+    // Optional: Add file size check here
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      updateCvField('personalInformation.avatarDataUri', reader.result as string);
+      setAvatarError(null);
+      toast({ title: 'Avatar Uploaded', description: 'Your avatar has been updated.' });
+    };
+    reader.onerror = () => {
+      toast({ title: 'File Read Error', description: 'Could not read the uploaded avatar image.', variant: 'destructive' });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleGenerateAvatar = async () => {
+    setIsGeneratingAvatar(true);
+    setAvatarError(null);
+    toast({ title: 'Generating Avatar...', description: 'The AI is creating your new avatar.' });
+
+    const avatarPrompt = `professional avatar for ${personalInformation.name || 'a professional'}, ${profession || 'in their field'}, high quality digital art, profile picture`;
+
+    try {
+      const result: GenerateImageOutput = await generateImage({ prompt: avatarPrompt });
+      if (result.imageDataUri) {
+        updateCvField('personalInformation.avatarDataUri', result.imageDataUri);
+        toast({ title: 'Avatar Generated!', description: 'Your new AI avatar is ready.' });
+      } else {
+        const errorMsg = result.error || 'Unknown error during avatar generation.';
+        setAvatarError(errorMsg);
+        toast({ title: 'Avatar Generation Failed', description: errorMsg, variant: 'destructive', duration: 8000 });
+      }
+    } catch (error: any) {
+      const errorMsg = error.message || 'Failed to generate avatar.';
+      setAvatarError(errorMsg);
+      toast({ title: 'Avatar Generation Error', description: errorMsg, variant: 'destructive', duration: 8000 });
+    } finally {
+      setIsGeneratingAvatar(false);
+    }
+  };
+  
+  const avatarSrc = personalInformation.avatarDataUri || `https://placehold.co/160x160.png?text=${getInitials(personalInformation.name)}`;
+
+
   return (
     <>
       {/* Hero/Introduction Section */}
       <section className="py-16 md:py-24 bg-gradient-to-b from-card via-background to-background border-b border-border/30">
         <div className="container mx-auto px-6 text-center">
-          <Avatar className="h-32 w-32 md:h-40 md:w-40 mx-auto mb-6 border-4 border-primary shadow-xl">
-            <AvatarImage 
-              src={`https://placehold.co/160x160.png?text=${getInitials(personalInformation.name)}`} 
-              alt={personalInformation.name || 'User Avatar'} 
-              data-ai-hint="profile portrait"
-            />
-            <AvatarFallback className="text-4xl md:text-5xl">{getInitials(personalInformation.name)}</AvatarFallback>
-          </Avatar>
+          <div className="relative inline-block">
+            <Avatar className="h-32 w-32 md:h-40 md:w-40 mx-auto mb-6 border-4 border-primary shadow-xl">
+              <AvatarImage 
+                src={avatarSrc}
+                alt={personalInformation.name || 'User Avatar'} 
+                data-ai-hint="profile portrait"
+                key={avatarSrc} // Force re-render if src changes
+              />
+              <AvatarFallback className="text-4xl md:text-5xl">{getInitials(personalInformation.name)}</AvatarFallback>
+            </Avatar>
+            {isGeneratingAvatar && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-full mb-6">
+                <Loader2 className="h-12 w-12 text-white animate-spin" />
+              </div>
+            )}
+          </div>
+
+          {isEditMode && (
+            <div className="max-w-xs mx-auto space-y-2 mt-0 mb-6">
+              <Button onClick={() => avatarFileInputRef.current?.click()} className="w-full" variant="outline" disabled={isGeneratingAvatar}>
+                <Upload size={18} className="mr-2" /> Upload Avatar
+              </Button>
+              <input
+                type="file"
+                ref={avatarFileInputRef}
+                onChange={handleAvatarUpload}
+                accept="image/*"
+                style={{ display: 'none' }}
+                id="avatar-upload-input"
+              />
+              <Button onClick={handleGenerateAvatar} className="w-full" disabled={isGeneratingAvatar}>
+                {isGeneratingAvatar ? <Loader2 size={18} className="mr-2 animate-spin" /> : <Sparkles size={18} className="mr-2" />}
+                Generate Avatar (AI)
+              </Button>
+              {avatarError && <p className="text-xs text-destructive mt-1">{avatarError}</p>}
+            </div>
+          )}
           
           {isEditMode ? (
             <Input
@@ -130,7 +223,6 @@ export default function PortfolioHomePage() {
               </Button>
             )}
           </div>
-
 
           <div className="mt-10 flex flex-wrap justify-center gap-4">
             {personalInformation.linkedin && (
