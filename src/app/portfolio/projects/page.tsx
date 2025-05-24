@@ -4,7 +4,7 @@
 import { usePortfolioContext } from '@/contexts/portfolio-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Lightbulb, ExternalLink } from 'lucide-react';
+import { Lightbulb, ExternalLink, Info } from 'lucide-react';
 import Image from 'next/image';
 
 export default function ProjectsPage() {
@@ -12,8 +12,22 @@ export default function ProjectsPage() {
 
   if (!cvData || !cvData.projects || cvData.projects.length === 0) {
     return (
-      <div className="container mx-auto py-12 px-4 md:px-6 text-center">
-        <p className="text-xl text-muted-foreground">No projects data found.</p>
+      <div className="container mx-auto py-16 px-4 md:px-6">
+        <Card className="max-w-2xl mx-auto shadow-md border-l-4 border-accent">
+          <CardHeader>
+            <div className="flex items-center">
+              <Info size={24} className="mr-3 text-accent" />
+              <CardTitle className="text-xl text-accent">No Projects Found</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              We couldn&apos;t find any project information in your CV data. 
+              If your CV includes a projects section, please try uploading and parsing it again.
+              You will also be able to add projects manually or with AI assistance in a future update.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -44,14 +58,14 @@ export default function ProjectsPage() {
                   width={600} 
                   height={375} 
                   className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-                  data-ai-hint="project application screenshot"
+                  data-ai-hint="project application screenshot" // Added data-ai-hint
                 />
               </div>
               <CardHeader className="p-6">
-                <CardTitle className="text-xl md:text-2xl text-primary group-hover:text-accent transition-colors">{project.name}</CardTitle>
+                <CardTitle className="text-xl md:text-2xl text-primary group-hover:text-accent transition-colors">{project.name || 'Untitled Project'}</CardTitle>
               </CardHeader>
               <CardContent className="p-6 pt-0 flex-grow">
-                <p className="text-md text-muted-foreground mb-4 whitespace-pre-line leading-relaxed">{project.description}</p>
+                <p className="text-md text-muted-foreground mb-4 whitespace-pre-line leading-relaxed">{project.description || 'No description available.'}</p>
               </CardContent>
               {project.url && (
                 <CardContent className="p-6 pt-0 border-t border-border/30 mt-auto">
@@ -69,4 +83,3 @@ export default function ProjectsPage() {
     </div>
   );
 }
-
