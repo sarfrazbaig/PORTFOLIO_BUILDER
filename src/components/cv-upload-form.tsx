@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ChangeEvent } from 'react';
@@ -23,7 +24,8 @@ const ACCEPTED_MIME_TYPES = [
 
 const cvUploadSchema = z.object({
   cvFile: z
-    .custom<FileList>((val) => val instanceof FileList && val.length > 0, 'CV file is required.')
+    .custom<FileList>((val) => val instanceof FileList, 'CV file must be a FileList.')
+    .refine((files) => files.length > 0, 'CV file is required.')
     .refine((files) => files?.[0]?.size <= 5 * 1024 * 1024, 'Max file size is 5MB.')
     .refine(
       (files) => ACCEPTED_MIME_TYPES.includes(files?.[0]?.type),
@@ -51,18 +53,25 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
     handleSubmit,
     formState: { errors },
     reset,
-    setValue,
+    setValue, // We will use setValue from react-hook-form
   } = useForm<CvUploadFormData>({
     resolver: zodResolver(cvUploadSchema),
   });
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const currentFiles = event.target.files; // This is FileList | null
+    const file = currentFiles?.[0];
+
     if (file) {
       setFileName(file.name);
-      setValue("cvFile", event.target.files as FileList);
+      // When a file is selected, currentFiles is a FileList with one item.
+      setValue("cvFile", currentFiles, { shouldValidate: true });
     } else {
       setFileName(null);
+      // If no file is selected (e.g., user cancels dialog),
+      // currentFiles might be null or an empty FileList.
+      // The schema expects a FileList, so provide an empty one if null.
+      setValue("cvFile", currentFiles || new DataTransfer().files, { shouldValidate: true });
     }
   };
 
@@ -72,7 +81,7 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
     toast({ title: 'Processing CV...', description: 'Please wait while we analyze your CV.' });
 
     try {
-      const file = data.cvFile[0];
+      const file = data.cvFile[0]; // data.cvFile should now be a valid FileList
       const reader = new FileReader();
 
       reader.onloadend = async () => {
@@ -86,7 +95,7 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
 
           try {
             const recommendThemeInput: RecommendThemeInput = {
-              cvContent: JSON.stringify(parsedCv.summary + " " + parsedCv.experience.map(e => e.description).join(" ")), // Use summary and experience for context
+              cvContent: JSON.stringify(parsedCv.summary + " " + parsedCv.experience.map(e => e.description).join(" ")),
               profession: data.profession,
             };
             const themeRecommendation = await recommendTheme(recommendThemeInput);
@@ -95,7 +104,7 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
           } catch (themeError) {
             console.error('Theme recommendation error:', themeError);
             toast({ title: 'Theme Recommendation Failed', description: 'Could not recommend a theme.', variant: 'destructive' });
-            onThemeRecommended({themeName: 'Default', reason: 'Could not generate a recommendation due to an error.'}); // Provide a fallback
+            onThemeRecommended({themeName: 'Default', reason: 'Could not generate a recommendation due to an error.'});
           }
 
         } catch (cvError) {
@@ -148,7 +157,7 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
               disabled={isProcessing}
             />
             {fileName && <p className="text-sm text-muted-foreground mt-1">Selected file: {fileName}</p>}
-            {errors.cvFile && <p className="text-sm text-destructive">{errors.cvFile.message}</p>}
+            {errors.cvFile && <p className="text-sm text-destructive">{errors.cvFile.message as string}</p>}
           </div>
 
           <div className="space-y-2">
@@ -167,7 +176,7 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
             {errors.profession && <p className="text-sm text-destructive">{errors.profession.message}</p>}
           </div>
 
-          <Button type="submit" className="w-full text-lg py-6" disabled={isProcessing}>
+          <Button type="submit" className="w-full text-lg py-6" disabled={isProcessing || !!errors.cvFile}>
             {isProcessing ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -182,3 +191,4 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
     </Card>
   );
 }
+
