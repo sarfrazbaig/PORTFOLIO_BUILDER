@@ -3,11 +3,12 @@
 
 import { usePortfolioContext } from '@/contexts/portfolio-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { GraduationCap, CalendarDays, MapPin } from 'lucide-react'; // Added MapPin
-import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { GraduationCap, CalendarDays, MapPin } from 'lucide-react';
 
 export default function EducationPage() {
-  const { cvData } = usePortfolioContext();
+  const { cvData, isEditMode, updateCvField } = usePortfolioContext();
 
   if (!cvData || !cvData.education || cvData.education.length === 0) {
     return (
@@ -18,6 +19,10 @@ export default function EducationPage() {
   }
 
   const { education } = cvData;
+
+  const handleInputChange = (index: number, field: string, value: string) => {
+    updateCvField(`education.${index}.${field}`, value);
+  };
 
   return (
     <div className="container mx-auto py-12 md:py-16 px-6">
@@ -38,20 +43,60 @@ export default function EducationPage() {
             >
               <CardHeader className="p-6 md:p-8 bg-muted/20">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                  <div>
-                    <CardTitle className="text-xl md:text-2xl text-primary">{edu.degree}</CardTitle>
-                    <CardDescription className="text-md md:text-lg font-medium text-foreground flex items-center mt-1">
-                      <MapPin size={16} className="mr-2 opacity-70"/>{edu.institution}
-                    </CardDescription>
+                  <div className="flex-grow">
+                     {isEditMode ? (
+                      <Input
+                        value={edu.degree}
+                        onChange={(e) => handleInputChange(index, 'degree', e.target.value)}
+                        placeholder="Degree / Certificate"
+                        className="text-xl md:text-2xl text-primary font-semibold bg-transparent border-2 border-dashed border-primary/30 focus:border-primary mb-1"
+                      />
+                    ) : (
+                      <CardTitle className="text-xl md:text-2xl text-primary">{edu.degree}</CardTitle>
+                    )}
+                    {isEditMode ? (
+                       <div className="flex items-center mt-1">
+                        <MapPin size={16} className="mr-2 opacity-70 text-muted-foreground"/>
+                        <Input
+                          value={edu.institution}
+                          onChange={(e) => handleInputChange(index, 'institution', e.target.value)}
+                          placeholder="Institution Name"
+                          className="text-md md:text-lg font-medium text-foreground bg-transparent border-2 border-dashed border-primary/30 focus:border-primary"
+                        />
+                      </div>
+                    ) : (
+                      <CardDescription className="text-md md:text-lg font-medium text-foreground flex items-center mt-1">
+                        <MapPin size={16} className="mr-2 opacity-70"/>{edu.institution}
+                      </CardDescription>
+                    )}
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1 sm:mt-0 pt-1 whitespace-nowrap bg-secondary px-4 py-2 rounded-full shadow-sm font-medium">
-                    <CalendarDays size={16} className="inline mr-2 opacity-70"/>{edu.dates}
-                  </p>
+                  {isEditMode ? (
+                    <Input
+                      value={edu.dates}
+                      onChange={(e) => handleInputChange(index, 'dates', e.target.value)}
+                      placeholder="Dates (e.g., 2016 - 2020)"
+                      className="text-sm text-muted-foreground bg-transparent border-2 border-dashed border-primary/30 focus:border-primary mt-1 sm:mt-0 w-full sm:w-auto"
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground mt-1 sm:mt-0 pt-1 whitespace-nowrap bg-secondary px-4 py-2 rounded-full shadow-sm font-medium">
+                      <CalendarDays size={16} className="inline mr-2 opacity-70"/>{edu.dates}
+                    </p>
+                  )}
                 </div>
               </CardHeader>
-              {edu.description && (
+              { (edu.description || isEditMode) && (
                 <CardContent className="p-6 md:p-8">
-                  <p className="text-md md:text-lg text-muted-foreground whitespace-pre-line leading-relaxed">{edu.description}</p>
+                   {isEditMode ? (
+                    <Textarea
+                      value={edu.description || ''}
+                      onChange={(e) => handleInputChange(index, 'description', e.target.value)}
+                      placeholder="Relevant details, achievements, thesis..."
+                      className="text-md md:text-lg text-muted-foreground whitespace-pre-line leading-relaxed bg-transparent border-2 border-dashed border-primary/30 focus:border-primary min-h-[100px]"
+                      rows={4}
+                    />
+                  ) : (
+                    edu.description && <p className="text-md md:text-lg text-muted-foreground whitespace-pre-line leading-relaxed">{edu.description}</p>
+                  )}
                 </CardContent>
               )}
             </Card>
@@ -61,3 +106,5 @@ export default function EducationPage() {
     </div>
   );
 }
+
+    

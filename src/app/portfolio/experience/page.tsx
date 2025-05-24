@@ -3,10 +3,12 @@
 
 import { usePortfolioContext } from '@/contexts/portfolio-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Briefcase, CalendarDays } from 'lucide-react';
 
 export default function ExperiencePage() {
-  const { cvData } = usePortfolioContext();
+  const { cvData, isEditMode, updateCvField } = usePortfolioContext();
 
   if (!cvData || !cvData.experience || cvData.experience.length === 0) {
     return (
@@ -17,6 +19,10 @@ export default function ExperiencePage() {
   }
 
   const { experience } = cvData;
+
+  const handleInputChange = (index: number, field: string, value: string) => {
+    updateCvField(`experience.${index}.${field}`, value);
+  };
 
   return (
     <div className="container mx-auto py-12 md:py-16 px-6">
@@ -37,17 +43,54 @@ export default function ExperiencePage() {
             >
               <CardHeader className="p-6 md:p-8 bg-muted/20">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                  <div>
-                    <CardTitle className="text-xl md:text-2xl text-primary">{exp.title}</CardTitle>
-                    <CardDescription className="text-md md:text-lg font-medium text-foreground">{exp.company}</CardDescription>
+                  <div className="flex-grow">
+                    {isEditMode ? (
+                      <Input
+                        value={exp.title}
+                        onChange={(e) => handleInputChange(index, 'title', e.target.value)}
+                        placeholder="Job Title"
+                        className="text-xl md:text-2xl text-primary font-semibold bg-transparent border-2 border-dashed border-primary/30 focus:border-primary mb-1"
+                      />
+                    ) : (
+                      <CardTitle className="text-xl md:text-2xl text-primary">{exp.title}</CardTitle>
+                    )}
+                    {isEditMode ? (
+                      <Input
+                        value={exp.company}
+                        onChange={(e) => handleInputChange(index, 'company', e.target.value)}
+                        placeholder="Company Name"
+                        className="text-md md:text-lg font-medium text-foreground bg-transparent border-2 border-dashed border-primary/30 focus:border-primary"
+                      />
+                    ) : (
+                      <CardDescription className="text-md md:text-lg font-medium text-foreground">{exp.company}</CardDescription>
+                    )}
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1 sm:mt-0 pt-1 whitespace-nowrap bg-secondary px-4 py-2 rounded-full shadow-sm font-medium">
-                    <CalendarDays size={16} className="inline mr-2 opacity-70"/>{exp.dates}
-                  </p>
+                  {isEditMode ? (
+                     <Input
+                        value={exp.dates}
+                        onChange={(e) => handleInputChange(index, 'dates', e.target.value)}
+                        placeholder="Dates (e.g., Jan 2020 - Present)"
+                        className="text-sm text-muted-foreground bg-transparent border-2 border-dashed border-primary/30 focus:border-primary mt-1 sm:mt-0 w-full sm:w-auto"
+                      />
+                  ) : (
+                    <p className="text-sm text-muted-foreground mt-1 sm:mt-0 pt-1 whitespace-nowrap bg-secondary px-4 py-2 rounded-full shadow-sm font-medium">
+                      <CalendarDays size={16} className="inline mr-2 opacity-70"/>{exp.dates}
+                    </p>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="p-6 md:p-8">
-                <p className="text-md md:text-lg text-muted-foreground whitespace-pre-line leading-relaxed">{exp.description}</p>
+                {isEditMode ? (
+                  <Textarea
+                    value={exp.description}
+                    onChange={(e) => handleInputChange(index, 'description', e.target.value)}
+                    placeholder="Role description and achievements..."
+                    className="text-md md:text-lg text-muted-foreground whitespace-pre-line leading-relaxed bg-transparent border-2 border-dashed border-primary/30 focus:border-primary min-h-[120px]"
+                    rows={5}
+                  />
+                ) : (
+                  <p className="text-md md:text-lg text-muted-foreground whitespace-pre-line leading-relaxed">{exp.description}</p>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -56,3 +99,5 @@ export default function ExperiencePage() {
     </div>
   );
 }
+
+    

@@ -18,7 +18,7 @@ interface PortfolioContextType {
   profession: string | null;
   isEditMode: boolean;
   toggleEditMode: () => void;
-  updateCvField: (path: string, value: any) => void; // For more granular updates
+  updateCvField: (path: string, value: any) => void;
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
@@ -36,7 +36,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       if (storedCvData) {
         const parsedData = JSON.parse(storedCvData) as ParseCvOutput;
         setCvDataState(parsedData);
-        updateProfession(parsedData);
+        updateProfessionState(parsedData);
       }
       const storedTheme = localStorage.getItem(THEME_RECOMMENDATION_KEY);
       if (storedTheme) {
@@ -51,7 +51,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const updateProfession = (data: ParseCvOutput | null) => {
+  const updateProfessionState = (data: ParseCvOutput | null) => {
     if (!data) {
         setProfession("Professional");
         return;
@@ -81,16 +81,17 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(CV_DATA_KEY);
     } else {
       localStorage.setItem(CV_DATA_KEY, JSON.stringify(newData));
-      updateProfession(newData);
+      updateProfessionState(newData); // Ensure profession is updated when cvData changes
     }
   };
 
   const setTheme: Dispatch<SetStateAction<RecommendThemeOutput | null>> = (value) => {
-    setThemeState(value);
-     if (value === null) {
+    const newValue = typeof value === 'function' ? value(theme) : value;
+    setThemeState(newValue);
+     if (newValue === null) {
       localStorage.removeItem(THEME_RECOMMENDATION_KEY);
     } else {
-      localStorage.setItem(THEME_RECOMMENDATION_KEY, JSON.stringify(value));
+      localStorage.setItem(THEME_RECOMMENDATION_KEY, JSON.stringify(newValue));
     }
   };
 
@@ -101,25 +102,74 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const updateCvField = (path: string, value: any) => {
     setCvData(prevData => {
       if (!prevData) return null;
-      const keys = path.split('.');
-      let currentLevel = { ...prevData };
-      let tempRef: any = currentLevel;
 
-      keys.forEach((key, index) => {
-        if (index === keys.length - 1) {
-          tempRef[key] = value;
-        } else {
-          if (!tempRef[key] || typeof tempRef[key] !== 'object') {
-            tempRef[key] = {}; // Create path if it doesn't exist
-          }
-          tempRef = tempRef[key];
+      const keys = path.split('.');
+      
+      const updater = (currentData: any, keysToProcess: string[]): any => {
+        if (!currentData && keysToProcess.length > 0) {
+          // If currentData is null/undefined but we still have keys, means path is invalid or trying to set on non-existing structure
+          console.error(`Attempted to traverse through null/undefined at ${keys.join('.')} looking for ${keysToProcess[0]}`);
+          return currentData; // Or initialize, but that's more complex: {} or [] depending on next key
         }
-      });
-      return currentLevel;
+
+        const key = keysToProcess[0];
+        const remainingKeys = keysToProcess.slice(1);
+        const index = parseInt(key);
+
+        if (remainingKeys.length === 0) { // Leaf node to update
+          if (Array.isArray(currentData) && !isNaN(index) && index >= 0 ) { // index < currentData.length removed to allow adding to array
+            const newArray = [...currentData];
+            newArray[index] = value;
+            return newArray;
+          } else if (typeof currentData === 'object' && currentData !== null) {
+            return { ...currentData, [key]: value };
+          } else if (currentData === undefined && !isNaN(index)) { // trying to set an index on an undefined array
+             const newArray = [];
+             newArray[index] = value;
+             return newArray;
+          } else if (currentData === undefined && isNaN(index)) { // trying to set a key on an undefined object
+            return { [key]: value };
+          }
+           else {
+            console.error(`Cannot set value. Target is not an array/object or index/key is invalid. Path: ${path}, Key: ${key}`);
+            return currentData;
+          }
+        }
+
+        // Not at the leaf, so recurse
+        if (Array.isArray(currentData) && !isNaN(index) && index >= 0 ) { // index < currentData.length removed
+          const newArray = [...currentData];
+          // Ensure the element at index exists before recursing, especially if it's an object/array
+          const currentItem = newArray[index];
+          if (typeof currentItem !== 'object' && typeof currentItem !== 'undefined' && remainingKeys.length > 0) {
+            console.error(`Path segment ${key} (index ${index}) in array is not an object/array, cannot traverse further for path ${path}`);
+            return newArray; // or initialize newArray[index] = {} / []
+          }
+          newArray[index] = updater(currentItem, remainingKeys);
+          return newArray;
+        } else if (typeof currentData === 'object' && currentData !== null) {
+           const currentItem = currentData[key];
+           if (typeof currentItem !== 'object' && typeof currentItem !== 'undefined' && currentItem !== null && remainingKeys.length > 0) {
+             console.error(`Path segment ${key} in object is not an object/array, cannot traverse further for path ${path}`);
+             // Initialize if necessary before recursing
+             // currentData[key] = isNaN(parseInt(remainingKeys[0])) ? {} : [];
+             // This part is tricky, for now, assume it exists or stop.
+             return { ...currentData };
+           }
+          return {
+            ...currentData,
+            [key]: updater(currentData[key], remainingKeys),
+          };
+        } else {
+          console.error(`Invalid path segment ${key} or non-traversable structure at ${path}. Current segment data:`, currentData);
+          return currentData;
+        }
+      };
+      const updatedData = updater(prevData, keys);
+      return updatedData;
     });
   };
   
-
   return (
     <PortfolioContext.Provider value={{ cvData, setCvData, theme, setTheme, isLoading, profession, isEditMode, toggleEditMode, updateCvField }}>
       {children}
@@ -134,3 +184,5 @@ export function usePortfolioContext() {
   }
   return context;
 }
+
+    
