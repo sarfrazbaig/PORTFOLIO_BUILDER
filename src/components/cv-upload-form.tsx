@@ -1,8 +1,8 @@
 
 'use client';
 
-import type { ChangeEvent } from 'react';
-import { useState } from 'react';
+import type { ChangeEvent } from 'react'; // ChangeEvent might not be needed anymore
+import { useState, useEffect } from 'react'; // Added useEffect
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -27,8 +27,6 @@ const cvUploadSchema = z.object({
   cvFile: z.any()
     .refine(
       (value): value is FileList => {
-        // This check runs at validation time (client-side for form submission)
-        // Ensure FileList is available (client-side) and if value is an instance of it
         return typeof FileList !== 'undefined' && value instanceof FileList;
       },
       {
@@ -36,14 +34,11 @@ const cvUploadSchema = z.object({
       }
     )
     .refine((files) => files.length > 0, { message: 'CV file is required.' })
-    .refine((files) => files.length === 0 || (files[0] && files[0].size <= 5 * 1024 * 1024), { message: 'Max file size is 5MB.' })
+    .refine((files) => files[0] && files[0].size <= 5 * 1024 * 1024, { message: 'Max file size is 5MB.' })
     .refine(
       (files) => {
-        // If no files, let the previous 'files.length > 0' rule handle it.
         if (files.length === 0) return true;
-        // If file exists but no type (should be rare), let it pass here to avoid breaking on unexpected file objects.
-        // The primary check is for valid MIME types.
-        if (!files[0]?.type) return true; 
+        if (!files[0]?.type) return true;
         return ACCEPTED_MIME_TYPES.includes(files[0].type);
       },
       { message: `Invalid file type. Supported: PDF, DOC, DOCX, TXT.` }
@@ -69,32 +64,22 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
     register,
     handleSubmit,
     formState: { errors },
-    // reset, // reset is not used
-    setValue,
+    watch, // Added watch
+    // setValue, // setValue might be removed if not used elsewhere, or kept for manual resets
   } = useForm<CvUploadFormData>({
     resolver: zodResolver(cvUploadSchema),
   });
 
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const fileList = event.target.files; // This can be null if the user cancels file selection
+  const watchedCvFile = watch("cvFile");
 
-    if (fileList && fileList.length > 0 && fileList[0]) { // Added explicit check for fileList[0]
-      setValue("cvFile", fileList, { shouldValidate: true });
-      setFileName(fileList[0].name);
+  useEffect(() => {
+    if (watchedCvFile && watchedCvFile.length > 0 && watchedCvFile[0]) {
+      setFileName(watchedCvFile[0].name);
     } else {
-      // No file selected or selection cancelled
-      // For client-side, if FileList and DataTransfer are available
-      if (typeof FileList !== 'undefined' && typeof DataTransfer !== 'undefined') {
-        const emptyFileList = new DataTransfer().files;
-        setValue("cvFile", emptyFileList, { shouldValidate: true });
-      } else {
-        // Fallback for environments where DataTransfer/FileList might not be fully available
-        // This part of the handler should ideally only run client-side due to user interaction
-        setValue("cvFile", null, { shouldValidate: true }); 
-      }
       setFileName(null);
     }
-  };
+  }, [watchedCvFile]);
+
 
   const onSubmit: SubmitHandler<CvUploadFormData> = async (data) => {
     setIsProcessing(true);
@@ -102,7 +87,13 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
     toast({ title: 'Processing CV...', description: 'Please wait while we analyze your CV.' });
 
     try {
-      const file = data.cvFile[0]; 
+      const file = data.cvFile[0];
+      if (!file) {
+        toast({ title: 'File Error', description: 'No file found in submitted data.', variant: 'destructive' });
+        setIsProcessing(false);
+        onLoadingChange(false);
+        return;
+      }
       const reader = new FileReader();
 
       reader.onloadend = async () => {
@@ -173,7 +164,7 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
               type="file"
               accept={ACCEPTED_MIME_TYPES.join(',')}
               className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 h-auto p-3"
-              {...register('cvFile', { onChange: handleFileChange })} 
+              {...register('cvFile')} 
               disabled={isProcessing}
             />
             {fileName && <p className="text-sm text-muted-foreground mt-1">Selected file: {fileName}</p>}
