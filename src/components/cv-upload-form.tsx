@@ -23,15 +23,22 @@ const ACCEPTED_MIME_TYPES = [
 ];
 
 const cvUploadSchema = z.object({
-  cvFile: z
-    .instanceof(FileList, { message: "Please select a file." })
+  cvFile: z.any() // Changed from z.instanceof(FileList)
+    .refine(
+      (value): value is FileList => {
+        // Check if FileList is available (client-side) and if value is an instance of it
+        // This check runs at validation time (client-side for form submission)
+        return typeof FileList !== 'undefined' && value instanceof FileList;
+      },
+      {
+        message: "Invalid file input. Please ensure you've selected a file.",
+      }
+    )
     .refine((files) => files.length > 0, { message: 'CV file is required.' })
-    .refine((files) => files[0].size <= 5 * 1024 * 1024, { message: 'Max file size is 5MB.' })
+    .refine((files) => files.length > 0 && files[0].size <= 5 * 1024 * 1024, { message: 'Max file size is 5MB.' })
     .refine(
       (files) => {
-        // This check assumes files.length > 0 has already passed.
-        // files[0] should exist.
-        if (!files[0]?.type) return false; 
+        if (files.length === 0 || !files[0]?.type) return false; // Ensure file exists before checking type
         return ACCEPTED_MIME_TYPES.includes(files[0].type);
       },
       { message: `Invalid file type. Supported: PDF, DOC, DOCX, TXT.` }
@@ -57,21 +64,20 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
     register,
     handleSubmit,
     formState: { errors },
-    reset, // Keep reset for use within onSubmit
+    reset,
     setValue,
   } = useForm<CvUploadFormData>({
     resolver: zodResolver(cvUploadSchema),
   });
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const fileList = event.target.files; // This is FileList | null
+    const fileList = event.target.files;
 
     if (fileList && fileList.length > 0) {
-      // Directly use the FileList from the input event
       setValue("cvFile", fileList, { shouldValidate: true });
       setFileName(fileList[0].name);
     } else {
-      // Create an empty FileList if no file is selected or selection is cleared
+      // Create an empty FileList for consistent type
       const emptyFileList = new DataTransfer().files;
       setValue("cvFile", emptyFileList, { shouldValidate: true });
       setFileName(null);
@@ -84,6 +90,7 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
     toast({ title: 'Processing CV...', description: 'Please wait while we analyze your CV.' });
 
     try {
+      // data.cvFile is now confirmed to be a FileList by Zod validation
       const file = data.cvFile[0]; 
       const reader = new FileReader();
 
@@ -109,15 +116,10 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
             toast({ title: 'Theme Recommendation Failed', description: 'Could not recommend a theme.', variant: 'destructive' });
             onThemeRecommended({themeName: 'Default', reason: 'Could not generate a recommendation due to an error.'});
           }
-          // reset(); // Reset form fields after successful processing of both CV and theme
-          // setFileName(null);
         } catch (cvError) {
           console.error('CV parsing error:', cvError);
           toast({ title: 'CV Parsing Failed', description: 'Please try a different file or check its content.', variant: 'destructive' });
         } finally {
-          // Moved reset logic here to ensure it always runs after attempts,
-          // but consider if reset is desired on partial success (e.g. CV parse OK, theme fail)
-          // For now, let's not reset automatically to allow user to see inputs.
           setIsProcessing(false);
           onLoadingChange(false);
         }
@@ -133,8 +135,6 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
       reader.readAsDataURL(file);
 
     } catch (error) {
-      // This catch block is for errors during the setup of FileReader,
-      // not for Zod validation errors which are handled by react-hook-form.
       console.error('Form submission error:', error);
       toast({ title: 'Submission Error', description: 'An unexpected error occurred.', variant: 'destructive' });
       setIsProcessing(false);
@@ -162,9 +162,6 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
               type="file"
               accept={ACCEPTED_MIME_TYPES.join(',')}
               className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 h-auto p-3"
-              // {...register('cvFile')} // Let react-hook-form handle this internally if onChange is also managed by it
-              // The onChange below means we are manually updating the form value.
-              // We still need register for other props like name, ref (forwarded by Input).
               {...register('cvFile', { onChange: handleFileChange })} 
               disabled={isProcessing}
             />
