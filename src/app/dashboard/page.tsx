@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ParseCvOutput } from '@/ai/flows/cv-parser';
 import type { RecommendThemeOutput } from '@/ai/flows/ai-theme-recommendation';
 import CvUploadForm from '@/components/cv-upload-form';
@@ -10,20 +10,47 @@ import ThemeRecommendationDisplay from '@/components/theme-recommendation-displa
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Info, ArrowRight, Eye } from 'lucide-react';
+import { Loader2, Info, Eye } from 'lucide-react';
 import Link from 'next/link';
+
+const CV_DATA_KEY = 'cvPortfolioData';
+const THEME_RECOMMENDATION_KEY = 'cvPortfolioTheme';
 
 export default function DashboardPage() {
   const [parsedCvData, setParsedCvData] = useState<ParseCvOutput | null>(null);
   const [themeRecommendation, setThemeRecommendation] = useState<RecommendThemeOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Load from localStorage on initial mount
+  useEffect(() => {
+    const storedCvData = localStorage.getItem(CV_DATA_KEY);
+    if (storedCvData) {
+      try {
+        setParsedCvData(JSON.parse(storedCvData));
+      } catch (e) {
+        console.error("Failed to parse CV data from localStorage", e);
+        localStorage.removeItem(CV_DATA_KEY);
+      }
+    }
+    const storedTheme = localStorage.getItem(THEME_RECOMMENDATION_KEY);
+    if (storedTheme) {
+      try {
+        setThemeRecommendation(JSON.parse(storedTheme));
+      } catch (e) {
+        console.error("Failed to parse theme recommendation from localStorage", e);
+        localStorage.removeItem(THEME_RECOMMENDATION_KEY);
+      }
+    }
+  }, []);
+
   const handleCvParsed = (data: ParseCvOutput) => {
     setParsedCvData(data);
+    localStorage.setItem(CV_DATA_KEY, JSON.stringify(data));
   };
 
   const handleThemeRecommended = (data: RecommendThemeOutput) => {
     setThemeRecommendation(data);
+    localStorage.setItem(THEME_RECOMMENDATION_KEY, JSON.stringify(data));
   };
 
   const handleLoadingChange = (loading: boolean) => {
