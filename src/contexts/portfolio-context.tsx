@@ -4,18 +4,20 @@
 import type { ReactNode, Dispatch, SetStateAction } from 'react';
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ParseCvOutput } from '@/ai/flows/cv-parser';
-// Updated import to reflect more complex theme object
-import type { CustomThemeOutput, CustomThemeVariables } from '@/ai/flows/ai-custom-theme-generator';
+import type { CustomThemeOutput, CustomThemeVariables as GenkitCustomThemeVariables } from '@/ai/flows/ai-custom-theme-generator';
 
 const CV_DATA_KEY = 'cvPortfolioData';
 const THEME_RECOMMENDATION_KEY = 'cvPortfolioTheme';
 
-// This can now hold either the simple theme name or the full custom theme object
+// Extend GenkitCustomThemeVariables for internal use if needed, or use as is
+export interface CustomThemeVariables extends GenkitCustomThemeVariables {}
+
 export interface PortfolioTheme extends Partial<CustomThemeOutput> {
-  themeName: string; // Always required
-  reason?: string; // From old flow
-  themeVariables?: CustomThemeVariables; // From new flow
-  previewImagePrompt?: string; // From new flow
+  themeName: string; 
+  reason?: string; 
+  themeVariables?: CustomThemeVariables; 
+  previewImagePrompt?: string;
+  previewImageDataUri?: string; // Added to store dashboard generated image
 }
 
 interface PortfolioContextType {
@@ -111,29 +113,33 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const updateCvField = (path: string, value: any) => {
     setCvData(prevData => {
       if (!prevData) return null;
+      
+      // Create a deep copy to ensure immutability
+      const newData = JSON.parse(JSON.stringify(prevData));
+      
       const keys = path.split('.');
-      const updater = (currentData: any, keysToProcess: string[]): any => {
-        if (keysToProcess.length === 0) return value; // Base case: update the value
-
-        const key = keysToProcess[0];
-        const remainingKeys = keysToProcess.slice(1);
-        const index = !isNaN(parseInt(key)) ? parseInt(key) : -1;
-
-        if (index !== -1) { // Array path
-          const currentArray = Array.isArray(currentData) ? [...currentData] : [];
-          // Ensure array is long enough, fill with null if necessary (though ideally schema should prevent this need)
-          while (index >= currentArray.length) {
-            currentArray.push(remainingKeys.length > 0 && !isNaN(parseInt(remainingKeys[0])) ? [] : {});
-          }
-          currentArray[index] = updater(currentArray[index], remainingKeys);
-          return currentArray;
-        } else { // Object path
-          const currentObject = typeof currentData === 'object' && currentData !== null ? {...currentData} : {};
-          currentObject[key] = updater(currentObject[key], remainingKeys);
-          return currentObject;
+      let current = newData;
+  
+      for (let i = 0; i < keys.length - 1; i++) {
+        const key = keys[i];
+        const nextKeyIsNumber = !isNaN(parseInt(keys[i+1]));
+  
+        if (!current[key] || typeof current[key] !== 'object') {
+          current[key] = nextKeyIsNumber ? [] : {};
         }
-      };
-      return updater(prevData, keys);
+        current = current[key];
+      }
+      
+      const finalKey = keys[keys.length - 1];
+      const finalKeyIsNumber = !isNaN(parseInt(finalKey));
+
+      if (finalKeyIsNumber && Array.isArray(current)) {
+        current[parseInt(finalKey)] = value;
+      } else {
+        current[finalKey] = value;
+      }
+      
+      return newData;
     });
   };
   
@@ -151,3 +157,5 @@ export function usePortfolioContext() {
   }
   return context;
 }
+
+    

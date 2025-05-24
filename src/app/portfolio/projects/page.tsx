@@ -2,21 +2,22 @@
 'use client';
 
 import { usePortfolioContext } from '@/contexts/portfolio-context';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // CardDescription added
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Lightbulb, Info, Layers } from 'lucide-react';
-import NextImage from 'next/image'; // Renamed to avoid conflict
+import NextImage from 'next/image';
 import Link from 'next/link';
 
 export default function ProjectsPage() {
-  const { cvData, isEditMode, updateCvField } = usePortfolioContext();
+  const { cvData, isEditMode, updateCvField, theme } // Added theme to get layoutStyle
+   = usePortfolioContext();
 
   if (!cvData || !cvData.projects || cvData.projects.length === 0) {
     return (
       <div className="container mx-auto py-16 px-4 md:px-6">
-        <Card className="max-w-2xl mx-auto shadow-md border-l-4 border-accent">
+        <Card className="max-w-2xl mx-auto shadow-md border-l-4 border-accent themed-card">
           <CardHeader>
             <div className="flex items-center">
               <Info size={24} className="mr-3 text-accent" />
@@ -37,6 +38,9 @@ export default function ProjectsPage() {
   }
 
   const { projects } = cvData;
+  const layoutStyle = theme?.themeVariables?.layoutStyle || 'grid-standard';
+  const spacingMultiplierCSSVar = "calc(1rem * var(--spacing-multiplier, 1))";
+
 
   const handleInputChange = (index: number, field: 'name' | 'description', value: string) => {
     updateCvField(`projects.${index}.${field}`, value);
@@ -53,11 +57,24 @@ export default function ProjectsPage() {
             A selection of projects I&apos;ve developed, showcasing my skills and interests.
           </p>
         </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
+        
+        {/* Apply dynamic class for layout based on theme */}
+        <div 
+            className={`projects-list-container ${
+                layoutStyle === 'grid-standard' ? 'grid md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10' : ''
+            } ${
+                layoutStyle === 'list-compact' ? 'flex flex-col gap-6' : ''
+            } ${
+                layoutStyle === 'minimal-rows' ? 'flex flex-col gap-4' : ''
+            } ${ 
+              layoutStyle === 'focus-hero' ? 'grid md:grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10' : '' // Example: focus-hero might be a 2-col grid
+            }` }
+            style={{gap: spacingMultiplierCSSVar}} // Example of using spacing multiplier
+        >
           {projects.map((project, index) => (
             <Card 
               key={index} 
-              className="shadow-lg flex flex-col hover:shadow-2xl transition-shadow duration-300 border-2 border-border/30 hover:border-accent group bg-card/90 backdrop-blur-sm overflow-hidden rounded-xl h-full"
+              className="themed-card flex flex-col group bg-card/90 backdrop-blur-sm overflow-hidden h-full transition-all duration-300 ease-in-out hover:shadow-2xl"
             >
               <div className="relative overflow-hidden aspect-[16/10] bg-muted">
                 <NextImage 
@@ -91,7 +108,7 @@ export default function ProjectsPage() {
                     rows={3}
                   />
                 ) : (
-                  <p className="text-md text-muted-foreground mb-4 whitespace-pre-line leading-relaxed line-clamp-3">{project.description || 'No description available.'}</p>
+                   <CardDescription className="text-md text-muted-foreground mb-4 whitespace-pre-line leading-relaxed line-clamp-3">{project.description || 'No description available.'}</CardDescription>
                 )}
               </CardContent>
                <CardContent className="p-6 pt-0 border-t border-border/30 mt-auto">
@@ -110,3 +127,5 @@ export default function ProjectsPage() {
     </div>
   );
 }
+
+    

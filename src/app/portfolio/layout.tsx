@@ -15,24 +15,77 @@ function PortfolioLayoutContent({ children }: { children: ReactNode }) {
   const { cvData, theme, isLoading } = usePortfolioContext();
 
   useEffect(() => {
+    const root = document.documentElement;
     if (theme && theme.themeVariables) {
-      const root = document.documentElement;
+      // Apply HSL color variables
       Object.entries(theme.themeVariables).forEach(([key, value]) => {
-        // Convert camelCase to kebab-case for CSS custom properties
         const cssVarName = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
-        root.style.setProperty(cssVarName, value);
+        if (typeof value === 'string' && (key !== 'fontFamilyBody' && key !== 'fontFamilyHeading' && key !== 'baseFontSize' && key !== 'layoutStyle' && key !== 'cardStyle' && key !== 'spacingScale')) {
+          root.style.setProperty(cssVarName, value);
+        }
       });
-    } else {
-      // Clear any dynamically set variables if themeVariables are not present
-      // Or apply a default theme class if necessary. For now, globals.css handles defaults.
-       const root = document.documentElement;
-       // List of variables that might have been set dynamically
-       const cssVarNames = [
+
+      // Apply font variables
+      if (theme.themeVariables.fontFamilyBody) {
+        root.style.setProperty('--font-family-body', theme.themeVariables.fontFamilyBody);
+      }
+      if (theme.themeVariables.fontFamilyHeading) {
+        root.style.setProperty('--font-family-heading', theme.themeVariables.fontFamilyHeading);
+      }
+      if (theme.themeVariables.baseFontSize) {
+        root.style.setProperty('--base-font-size', theme.themeVariables.baseFontSize);
+      }
+
+      // Apply data attributes for styles handled by CSS rules
+      if (theme.themeVariables.layoutStyle) {
+        root.setAttribute('data-layout-style', theme.themeVariables.layoutStyle);
+      } else {
+        root.removeAttribute('data-layout-style');
+      }
+      if (theme.themeVariables.cardStyle) {
+        root.setAttribute('data-card-style', theme.themeVariables.cardStyle);
+      } else {
+        root.removeAttribute('data-card-style');
+      }
+       if (theme.themeVariables.spacingScale) {
+        root.setAttribute('data-spacing-scale', theme.themeVariables.spacingScale);
+      } else {
+        root.removeAttribute('data-spacing-scale');
+      }
+       // Clear old theme class if new variables are applied
+      root.className = root.className.replace(/theme-\S+/g, '').trim();
+
+    } else if (theme && theme.themeName) {
+      // Fallback for older themes or basic AI recommendations
+      const themeClass = `theme-${theme.themeName.toLowerCase().replace(/\s+/g, '-')}`;
+      // Remove other theme classes before adding the new one
+      root.className = root.className.replace(/theme-\S+/g, '').trim();
+      root.classList.add(themeClass);
+      
+      // Clear dynamically set style properties if falling back to class-based theme
+      const varsToClear = [
         '--background', '--foreground', '--primary', '--primary-foreground',
         '--secondary', '--secondary-foreground', '--accent', '--accent-foreground',
-        '--card', '--card-foreground', '--border', '--input', '--ring'
+        '--card', '--card-foreground', '--border', '--input', '--ring',
+        '--font-family-body', '--font-family-heading', '--base-font-size'
       ];
-      cssVarNames.forEach(cssVarName => root.style.removeProperty(cssVarName));
+      varsToClear.forEach(cssVarName => root.style.removeProperty(cssVarName));
+      root.removeAttribute('data-layout-style');
+      root.removeAttribute('data-card-style');
+      root.removeAttribute('data-spacing-scale');
+    } else {
+       // No theme or theme variables, ensure no dynamic styles/attributes are lingering
+      const varsToClear = [
+        '--background', '--foreground', '--primary', '--primary-foreground',
+        '--secondary', '--secondary-foreground', '--accent', '--accent-foreground',
+        '--card', '--card-foreground', '--border', '--input', '--ring',
+        '--font-family-body', '--font-family-heading', '--base-font-size'
+      ];
+      varsToClear.forEach(cssVarName => root.style.removeProperty(cssVarName));
+      root.removeAttribute('data-layout-style');
+      root.removeAttribute('data-card-style');
+      root.removeAttribute('data-spacing-scale');
+      root.className = root.className.replace(/theme-\S+/g, '').trim();
     }
   }, [theme]);
 
@@ -72,8 +125,7 @@ function PortfolioLayoutContent({ children }: { children: ReactNode }) {
     );
   }
   
-  // Apply base theme class if themeVariables are not present (for fallback)
-  // If themeVariables are present, they will override these via inline styles.
+  // Theme class is primarily for fallback now. Dynamic styles take precedence.
   const themeClass = (theme && !theme.themeVariables && theme.themeName) 
     ? `theme-${theme.themeName.toLowerCase().replace(/\s+/g, '-')}` 
     : '';
@@ -96,3 +148,5 @@ export default function PortfolioLayout({ children }: { children: ReactNode }) {
     </PortfolioProvider>
   );
 }
+
+    
