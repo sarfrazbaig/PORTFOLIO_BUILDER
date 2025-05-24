@@ -107,7 +107,8 @@ export default function DashboardPage() {
         <div className="mt-12 text-center">
           <Separator className="my-8" />
           <h2 className="text-2xl font-semibold text-primary mb-4">Ready to see your portfolio?</h2>
-          <Link href="/dashboard/portfolio">
+          {/* Updated Link to point to /portfolio */}
+          <Link href="/portfolio">
             <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground px-8 py-6 text-lg">
               View Your Portfolio <Eye className="ml-2 h-5 w-5" />
             </Button>
