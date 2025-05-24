@@ -5,14 +5,37 @@ import type { ReactNode } from 'react';
 import { PortfolioProvider, usePortfolioContext } from '@/contexts/portfolio-context';
 import PortfolioHeader from '@/components/portfolio-header';
 import PortfolioFooter from '@/components/portfolio-footer';
-// Removed AiHelperButton import
 import { Loader2, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useEffect } from 'react';
 
 function PortfolioLayoutContent({ children }: { children: ReactNode }) {
   const { cvData, theme, isLoading } = usePortfolioContext();
+
+  useEffect(() => {
+    if (theme && theme.themeVariables) {
+      const root = document.documentElement;
+      Object.entries(theme.themeVariables).forEach(([key, value]) => {
+        // Convert camelCase to kebab-case for CSS custom properties
+        const cssVarName = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+        root.style.setProperty(cssVarName, value);
+      });
+    } else {
+      // Clear any dynamically set variables if themeVariables are not present
+      // Or apply a default theme class if necessary. For now, globals.css handles defaults.
+       const root = document.documentElement;
+       // List of variables that might have been set dynamically
+       const cssVarNames = [
+        '--background', '--foreground', '--primary', '--primary-foreground',
+        '--secondary', '--secondary-foreground', '--accent', '--accent-foreground',
+        '--card', '--card-foreground', '--border', '--input', '--ring'
+      ];
+      cssVarNames.forEach(cssVarName => root.style.removeProperty(cssVarName));
+    }
+  }, [theme]);
+
 
   if (isLoading) {
     return (
@@ -35,8 +58,8 @@ function PortfolioLayoutContent({ children }: { children: ReactNode }) {
           </CardHeader>
           <CardContent>
             <CardDescription className="mb-6 text-lg text-destructive-foreground/80">
-              It looks like we couldn&apos;t find your CV data or theme recommendation. 
-              Please go back to the dashboard and upload your CV first.
+              It looks like we couldn&apos;t find your CV data or theme selection. 
+              Please go back to the dashboard and upload your CV or select a theme first.
             </CardDescription>
             <Link href="/dashboard">
               <Button variant="outline" size="lg" className="border-destructive text-destructive hover:bg-destructive/10">
@@ -49,7 +72,11 @@ function PortfolioLayoutContent({ children }: { children: ReactNode }) {
     );
   }
   
-  const themeClass = theme ? `theme-${theme.themeName.toLowerCase().replace(/\s+/g, '-')}` : '';
+  // Apply base theme class if themeVariables are not present (for fallback)
+  // If themeVariables are present, they will override these via inline styles.
+  const themeClass = (theme && !theme.themeVariables && theme.themeName) 
+    ? `theme-${theme.themeName.toLowerCase().replace(/\s+/g, '-')}` 
+    : '';
 
   return (
     <div className={`flex flex-col min-h-screen bg-background text-foreground ${themeClass} antialiased`}>
@@ -58,7 +85,6 @@ function PortfolioLayoutContent({ children }: { children: ReactNode }) {
         {children}
       </main>
       <PortfolioFooter />
-      {/* Removed AiHelperButton component usage */}
     </div>
   );
 }

@@ -4,16 +4,25 @@
 import type { ReactNode, Dispatch, SetStateAction } from 'react';
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ParseCvOutput } from '@/ai/flows/cv-parser';
-import type { RecommendThemeOutput } from '@/ai/flows/ai-theme-recommendation';
+// Updated import to reflect more complex theme object
+import type { CustomThemeOutput, CustomThemeVariables } from '@/ai/flows/ai-custom-theme-generator';
 
 const CV_DATA_KEY = 'cvPortfolioData';
 const THEME_RECOMMENDATION_KEY = 'cvPortfolioTheme';
 
+// This can now hold either the simple theme name or the full custom theme object
+export interface PortfolioTheme extends Partial<CustomThemeOutput> {
+  themeName: string; // Always required
+  reason?: string; // From old flow
+  themeVariables?: CustomThemeVariables; // From new flow
+  previewImagePrompt?: string; // From new flow
+}
+
 interface PortfolioContextType {
   cvData: ParseCvOutput | null;
   setCvData: Dispatch<SetStateAction<ParseCvOutput | null>>;
-  theme: RecommendThemeOutput | null;
-  setTheme: Dispatch<SetStateAction<RecommendThemeOutput | null>>;
+  theme: PortfolioTheme | null;
+  setTheme: Dispatch<SetStateAction<PortfolioTheme | null>>;
   isLoading: boolean;
   profession: string | null;
   isEditMode: boolean;
@@ -25,7 +34,7 @@ const PortfolioContext = createContext<PortfolioContextType | undefined>(undefin
 
 export function PortfolioProvider({ children }: { children: ReactNode }) {
   const [cvData, setCvDataState] = useState<ParseCvOutput | null>(null);
-  const [theme, setThemeState] = useState<RecommendThemeOutput | null>(null);
+  const [theme, setThemeState] = useState<PortfolioTheme | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [profession, setProfession] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -40,7 +49,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       }
       const storedTheme = localStorage.getItem(THEME_RECOMMENDATION_KEY);
       if (storedTheme) {
-        setThemeState(JSON.parse(storedTheme));
+        setThemeState(JSON.parse(storedTheme) as PortfolioTheme);
       }
     } catch (e) {
       console.error("Error loading data from localStorage", e);
@@ -81,11 +90,11 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(CV_DATA_KEY);
     } else {
       localStorage.setItem(CV_DATA_KEY, JSON.stringify(newData));
-      updateProfessionState(newData); // Ensure profession is updated when cvData changes
+      updateProfessionState(newData);
     }
   };
 
-  const setTheme: Dispatch<SetStateAction<RecommendThemeOutput | null>> = (value) => {
+  const setTheme: Dispatch<SetStateAction<PortfolioTheme | null>> = (value) => {
     const newValue = typeof value === 'function' ? value(theme) : value;
     setThemeState(newValue);
      if (newValue === null) {
@@ -102,71 +111,29 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const updateCvField = (path: string, value: any) => {
     setCvData(prevData => {
       if (!prevData) return null;
-
       const keys = path.split('.');
-      
       const updater = (currentData: any, keysToProcess: string[]): any => {
-        if (!currentData && keysToProcess.length > 0) {
-          // If currentData is null/undefined but we still have keys, means path is invalid or trying to set on non-existing structure
-          console.error(`Attempted to traverse through null/undefined at ${keys.join('.')} looking for ${keysToProcess[0]}`);
-          return currentData; // Or initialize, but that's more complex: {} or [] depending on next key
-        }
+        if (keysToProcess.length === 0) return value; // Base case: update the value
 
         const key = keysToProcess[0];
         const remainingKeys = keysToProcess.slice(1);
-        const index = parseInt(key);
+        const index = !isNaN(parseInt(key)) ? parseInt(key) : -1;
 
-        if (remainingKeys.length === 0) { // Leaf node to update
-          if (Array.isArray(currentData) && !isNaN(index) && index >= 0 ) { // index < currentData.length removed to allow adding to array
-            const newArray = [...currentData];
-            newArray[index] = value;
-            return newArray;
-          } else if (typeof currentData === 'object' && currentData !== null) {
-            return { ...currentData, [key]: value };
-          } else if (currentData === undefined && !isNaN(index)) { // trying to set an index on an undefined array
-             const newArray = [];
-             newArray[index] = value;
-             return newArray;
-          } else if (currentData === undefined && isNaN(index)) { // trying to set a key on an undefined object
-            return { [key]: value };
+        if (index !== -1) { // Array path
+          const currentArray = Array.isArray(currentData) ? [...currentData] : [];
+          // Ensure array is long enough, fill with null if necessary (though ideally schema should prevent this need)
+          while (index >= currentArray.length) {
+            currentArray.push(remainingKeys.length > 0 && !isNaN(parseInt(remainingKeys[0])) ? [] : {});
           }
-           else {
-            console.error(`Cannot set value. Target is not an array/object or index/key is invalid. Path: ${path}, Key: ${key}`);
-            return currentData;
-          }
-        }
-
-        // Not at the leaf, so recurse
-        if (Array.isArray(currentData) && !isNaN(index) && index >= 0 ) { // index < currentData.length removed
-          const newArray = [...currentData];
-          // Ensure the element at index exists before recursing, especially if it's an object/array
-          const currentItem = newArray[index];
-          if (typeof currentItem !== 'object' && typeof currentItem !== 'undefined' && remainingKeys.length > 0) {
-            console.error(`Path segment ${key} (index ${index}) in array is not an object/array, cannot traverse further for path ${path}`);
-            return newArray; // or initialize newArray[index] = {} / []
-          }
-          newArray[index] = updater(currentItem, remainingKeys);
-          return newArray;
-        } else if (typeof currentData === 'object' && currentData !== null) {
-           const currentItem = currentData[key];
-           if (typeof currentItem !== 'object' && typeof currentItem !== 'undefined' && currentItem !== null && remainingKeys.length > 0) {
-             console.error(`Path segment ${key} in object is not an object/array, cannot traverse further for path ${path}`);
-             // Initialize if necessary before recursing
-             // currentData[key] = isNaN(parseInt(remainingKeys[0])) ? {} : [];
-             // This part is tricky, for now, assume it exists or stop.
-             return { ...currentData };
-           }
-          return {
-            ...currentData,
-            [key]: updater(currentData[key], remainingKeys),
-          };
-        } else {
-          console.error(`Invalid path segment ${key} or non-traversable structure at ${path}. Current segment data:`, currentData);
-          return currentData;
+          currentArray[index] = updater(currentArray[index], remainingKeys);
+          return currentArray;
+        } else { // Object path
+          const currentObject = typeof currentData === 'object' && currentData !== null ? {...currentData} : {};
+          currentObject[key] = updater(currentObject[key], remainingKeys);
+          return currentObject;
         }
       };
-      const updatedData = updater(prevData, keys);
-      return updatedData;
+      return updater(prevData, keys);
     });
   };
   
@@ -184,5 +151,3 @@ export function usePortfolioContext() {
   }
   return context;
 }
-
-    
