@@ -32,9 +32,7 @@ export default function PortfolioPage() {
   useEffect(() => {
     const storedCvData = localStorage.getItem(CV_DATA_KEY);
     const storedTheme = localStorage.getItem(THEME_RECOMMENDATION_KEY);
-    // Assuming profession might also be stored or derived, for now, we'll try to get it if CV data exists
-    // In a real app, profession would likely be part of cvData or explicitly stored.
-    // For this example, let's assume if experience exists, the first job title can be a stand-in.
+    
     if (storedCvData) {
       try {
         const parsedData = JSON.parse(storedCvData) as ParseCvOutput;
@@ -42,7 +40,6 @@ export default function PortfolioPage() {
         if (parsedData.experience && parsedData.experience.length > 0) {
           setProfession(parsedData.experience[0].title);
         } else if (parsedData.summary) {
-            // Fallback to first few words of summary or a default
             setProfession(parsedData.summary.split(' ').slice(0,3).join(' ') + "...");
         } else {
             setProfession("Professional");
@@ -105,7 +102,7 @@ export default function PortfolioPage() {
         <div className="container mx-auto px-4 md:px-6 py-6 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
           <div className="flex items-center space-x-4">
              <Avatar className="h-20 w-20 border-4 border-primary shadow-lg">
-              <AvatarImage src={`https://placehold.co/120x120.png?text=${getInitials(personalInformation.name)}`} alt={personalInformation.name} data-ai-hint="profile photo"/>
+              <AvatarImage src={`https://placehold.co/120x120.png?text=${getInitials(personalInformation.name)}`} alt={personalInformation.name || 'User Avatar'} data-ai-hint="profile photo"/>
               <AvatarFallback className="text-2xl">{getInitials(personalInformation.name)}</AvatarFallback>
             </Avatar>
             <div>
@@ -242,7 +239,7 @@ export default function PortfolioPage() {
                   <div className="relative overflow-hidden">
                     <Image 
                       src={`https://placehold.co/600x400.png`} 
-                      alt={project.name} 
+                      alt={project.name || 'Project image'} 
                       width={600} 
                       height={400} 
                       className="rounded-t-md object-cover aspect-video group-hover:scale-105 transition-transform duration-300"
