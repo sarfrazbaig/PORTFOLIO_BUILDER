@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Briefcase, GraduationCap, Lightbulb, Mail, Phone, Linkedin, Github, UserCircle, FileText, Sparkles, Link as LinkIcon, MapPin, CalendarDays, Palette, ExternalLink, Info, ArrowLeft } from 'lucide-react';
+import { Briefcase, GraduationCap, Lightbulb, Mail, Phone, Linkedin, Github, UserCircle, FileText, Sparkles, Link as LinkIcon, MapPin, CalendarDays, Palette, ExternalLink, Info, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image'; // For placeholder images
 
