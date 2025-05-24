@@ -22,23 +22,28 @@ const ACCEPTED_MIME_TYPES = [
   'text/plain',
 ];
 
+// Zod schema for form validation
 const cvUploadSchema = z.object({
-  cvFile: z.any() // Changed from z.instanceof(FileList)
+  cvFile: z.any()
     .refine(
       (value): value is FileList => {
-        // Check if FileList is available (client-side) and if value is an instance of it
         // This check runs at validation time (client-side for form submission)
+        // Ensure FileList is available (client-side) and if value is an instance of it
         return typeof FileList !== 'undefined' && value instanceof FileList;
       },
       {
-        message: "Invalid file input. Please ensure you've selected a file.",
+        message: "Invalid file input. Please select a file.",
       }
     )
     .refine((files) => files.length > 0, { message: 'CV file is required.' })
-    .refine((files) => files.length > 0 && files[0].size <= 5 * 1024 * 1024, { message: 'Max file size is 5MB.' })
+    .refine((files) => files.length === 0 || (files[0] && files[0].size <= 5 * 1024 * 1024), { message: 'Max file size is 5MB.' })
     .refine(
       (files) => {
-        if (files.length === 0 || !files[0]?.type) return false; // Ensure file exists before checking type
+        // If no files, let the previous 'files.length > 0' rule handle it.
+        if (files.length === 0) return true;
+        // If file exists but no type (should be rare), let it pass here to avoid breaking on unexpected file objects.
+        // The primary check is for valid MIME types.
+        if (!files[0]?.type) return true; 
         return ACCEPTED_MIME_TYPES.includes(files[0].type);
       },
       { message: `Invalid file type. Supported: PDF, DOC, DOCX, TXT.` }
@@ -55,7 +60,7 @@ interface CvUploadFormProps {
   currentCvData: ParseCvOutput | null;
 }
 
-export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoadingChange, currentCvData }: CvUploadFormProps) {
+export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoadingChange }: CvUploadFormProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const [fileName, setFileName] = useState<string | null>(null);
@@ -64,22 +69,29 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
     register,
     handleSubmit,
     formState: { errors },
-    reset,
+    // reset, // reset is not used
     setValue,
   } = useForm<CvUploadFormData>({
     resolver: zodResolver(cvUploadSchema),
   });
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const fileList = event.target.files;
+    const fileList = event.target.files; // This can be null if the user cancels file selection
 
-    if (fileList && fileList.length > 0) {
+    if (fileList && fileList.length > 0 && fileList[0]) { // Added explicit check for fileList[0]
       setValue("cvFile", fileList, { shouldValidate: true });
       setFileName(fileList[0].name);
     } else {
-      // Create an empty FileList for consistent type
-      const emptyFileList = new DataTransfer().files;
-      setValue("cvFile", emptyFileList, { shouldValidate: true });
+      // No file selected or selection cancelled
+      // For client-side, if FileList and DataTransfer are available
+      if (typeof FileList !== 'undefined' && typeof DataTransfer !== 'undefined') {
+        const emptyFileList = new DataTransfer().files;
+        setValue("cvFile", emptyFileList, { shouldValidate: true });
+      } else {
+        // Fallback for environments where DataTransfer/FileList might not be fully available
+        // This part of the handler should ideally only run client-side due to user interaction
+        setValue("cvFile", null, { shouldValidate: true }); 
+      }
       setFileName(null);
     }
   };
@@ -90,7 +102,6 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
     toast({ title: 'Processing CV...', description: 'Please wait while we analyze your CV.' });
 
     try {
-      // data.cvFile is now confirmed to be a FileList by Zod validation
       const file = data.cvFile[0]; 
       const reader = new FileReader();
 
@@ -200,3 +211,4 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
     </Card>
   );
 }
+    
