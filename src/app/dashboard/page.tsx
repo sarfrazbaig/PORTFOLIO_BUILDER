@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import type { ParseCvOutput } from '@/ai/flows/cv-parser';
 import type { RecommendThemeOutput } from '@/ai/flows/ai-theme-recommendation';
 import { generateCustomThemes, type CustomThemePreferencesInput, type CustomThemeOutput } from '@/ai/flows/ai-custom-theme-generator';
-import type { PortfolioTheme } from '@/contexts/portfolio-context'; // Updated import
+import type { PortfolioTheme } from '@/contexts/portfolio-context';
 import CvUploadForm from '@/components/cv-upload-form';
 import ParsedCvDisplay from '@/components/parsed-cv-display';
 import ThemeRecommendationDisplay from '@/components/theme-recommendation-display';
@@ -13,9 +13,9 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input as ShadInput } from '@/components/ui/input'; // Renamed to avoid conflict with form input
+import { Input as ShadInput } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Loader2, Info, Eye, Palette, Sparkles } from 'lucide-react';
+import { Loader2, Info, Eye, Palette, Sparkles, UploadCloud, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
@@ -50,11 +50,9 @@ export default function DashboardPage() {
     if (storedTheme) {
       try {
         const theme = JSON.parse(storedTheme) as PortfolioTheme;
-        // Assuming old structure was just RecommendThemeOutput, if it has themeVariables it's new
         if (!theme.themeVariables) {
             setInitialThemeRecommendation({themeName: theme.themeName, reason: theme.reason || ''});
         }
-         // If it's a full custom theme, we might not need to show the initial recommendation display in the same way
       } catch (e) { console.error("Failed to parse theme recommendation", e); localStorage.removeItem(THEME_RECOMMENDATION_KEY); }
     }
   }, []);
@@ -66,7 +64,6 @@ export default function DashboardPage() {
 
   const handleInitialThemeRecommended = (data: RecommendThemeOutput) => {
     setInitialThemeRecommendation(data);
-    // Store this initial recommendation. It can be overwritten by custom theme selection.
     localStorage.setItem(THEME_RECOMMENDATION_KEY, JSON.stringify(data));
   };
 
@@ -108,8 +105,8 @@ export default function DashboardPage() {
 
   const handleSelectCustomTheme = (theme: CustomThemeOutput) => {
     const portfolioThemeToSave: PortfolioTheme = {
-      themeName: theme.themeName, // This will be the custom name like "Ocean Breeze Dark"
-      reason: theme.description, // Use the custom theme description
+      themeName: theme.themeName,
+      reason: theme.description,
       themeVariables: theme.themeVariables,
       previewImagePrompt: theme.previewImagePrompt,
     };
@@ -118,6 +115,17 @@ export default function DashboardPage() {
     router.push('/portfolio');
   };
   
+  const handleStartOver = () => {
+    if (window.confirm("Are you sure you want to clear current CV data and start over?")) {
+      setParsedCvData(null);
+      setInitialThemeRecommendation(null);
+      setGeneratedCustomThemes([]);
+      localStorage.removeItem(CV_DATA_KEY);
+      localStorage.removeItem(THEME_RECOMMENDATION_KEY);
+      toast({ title: "Data Cleared", description: "Ready for a new CV upload." });
+    }
+  };
+
   const isLoading = isLoadingCv || isGeneratingThemes;
 
   return (
@@ -128,6 +136,15 @@ export default function DashboardPage() {
           Upload your CV to generate content, then customize your portfolio's look and feel.
         </p>
       </div>
+
+      {parsedCvData && (
+        <div className="text-center my-6">
+          <Button onClick={handleStartOver} variant="outline" size="lg">
+            <RotateCcw className="mr-2 h-5 w-5" />
+            Upload New CV / Start Over
+          </Button>
+        </div>
+      )}
       
       {!parsedCvData && (
         <CvUploadForm
@@ -234,7 +251,7 @@ export default function DashboardPage() {
                     <CardHeader>
                       <div className="aspect-video bg-muted rounded-md overflow-hidden mb-4">
                         <Image 
-                          src={`https://placehold.co/600x338.png`} // Using 16:9 aspect ratio for preview
+                          src={`https://placehold.co/600x338.png`}
                           alt={`Preview for ${theme.themeName}`} 
                           width={600} 
                           height={338} 
