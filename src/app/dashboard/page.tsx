@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input as ShadInput } from '@/components/ui/input';
+import { Input as ShadInput } from '@/components/ui/input'; // Renamed to avoid conflict with HTML Input
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Info, Eye, Palette, Sparkles, UploadCloud, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
@@ -50,7 +50,10 @@ export default function DashboardPage() {
     if (storedTheme) {
       try {
         const theme = JSON.parse(storedTheme) as PortfolioTheme;
-        if (!theme.themeVariables) {
+        // If it's an old theme format (just name/reason), or a new one without themeVariables (less likely but possible)
+        // We only set initialThemeRecommendation if it's the basic AI one.
+        // Custom themes with themeVariables are handled differently now.
+        if (!theme.themeVariables) { 
             setInitialThemeRecommendation({themeName: theme.themeName, reason: theme.reason || ''});
         }
       } catch (e) { console.error("Failed to parse theme recommendation", e); localStorage.removeItem(THEME_RECOMMENDATION_KEY); }
@@ -64,6 +67,7 @@ export default function DashboardPage() {
 
   const handleInitialThemeRecommended = (data: RecommendThemeOutput) => {
     setInitialThemeRecommendation(data);
+    // Save the basic recommendation. This might be overwritten if a custom theme is chosen.
     localStorage.setItem(THEME_RECOMMENDATION_KEY, JSON.stringify(data));
   };
 
@@ -81,11 +85,12 @@ export default function DashboardPage() {
       return;
     }
     setIsGeneratingThemes(true);
-    setGeneratedCustomThemes([]);
+    setGeneratedCustomThemes([]); // Clear previous custom themes
     toast({ title: "Generating Custom Themes...", description: "The AI is crafting some options for you." });
     try {
       const input: CustomThemePreferencesInput = {
         ...customThemePreferences,
+        // Provide some context from CV for theme generation
         currentProfession: parsedCvData?.experience?.[0]?.title || parsedCvData?.summary?.split(' ')[0] || "Professional",
       };
       const result = await generateCustomThemes(input);
@@ -104,9 +109,10 @@ export default function DashboardPage() {
   };
 
   const handleSelectCustomTheme = (theme: CustomThemeOutput) => {
+    // Save the full custom theme object, including themeVariables
     const portfolioThemeToSave: PortfolioTheme = {
-      themeName: theme.themeName,
-      reason: theme.description,
+      themeName: theme.themeName, // e.g., "Ocean Breeze Dark"
+      reason: theme.description, // Use AI's description of the custom theme
       themeVariables: theme.themeVariables,
       previewImagePrompt: theme.previewImagePrompt,
     };
@@ -119,7 +125,7 @@ export default function DashboardPage() {
     if (window.confirm("Are you sure you want to clear current CV data and start over?")) {
       setParsedCvData(null);
       setInitialThemeRecommendation(null);
-      setGeneratedCustomThemes([]);
+      setGeneratedCustomThemes([]); // Also clear generated themes
       localStorage.removeItem(CV_DATA_KEY);
       localStorage.removeItem(THEME_RECOMMENDATION_KEY);
       toast({ title: "Data Cleared", description: "Ready for a new CV upload." });
@@ -137,6 +143,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      {/* "Start Over" button is displayed if CV data exists */}
       {parsedCvData && (
         <div className="text-center my-6">
           <Button onClick={handleStartOver} variant="outline" size="lg">
@@ -146,15 +153,17 @@ export default function DashboardPage() {
         </div>
       )}
       
+      {/* CV Upload Form is displayed if no CV data exists */}
       {!parsedCvData && (
         <CvUploadForm
           onCvParsed={handleCvParsed}
           onThemeRecommended={handleInitialThemeRecommended}
           onLoadingChange={handleLoadingChange}
-          currentCvData={parsedCvData}
+          // currentCvData prop removed as it's implicitly null when this renders
         />
       )}
 
+      {/* Loading spinner while CV is processing */}
       {isLoadingCv && (
         <Card className="mt-8 shadow-md">
           <CardContent className="p-6">
@@ -166,13 +175,16 @@ export default function DashboardPage() {
         </Card>
       )}
 
+      {/* Content displayed after CV is parsed and not currently loading CV */}
       {!isLoadingCv && parsedCvData && (
         <>
+          {/* Display initial AI theme recommendation if no custom themes have been generated yet */}
           {initialThemeRecommendation && !generatedCustomThemes.length && (
             <ThemeRecommendationDisplay recommendation={initialThemeRecommendation} />
           )}
           <Separator />
           
+          {/* Custom Theme Generation Section */}
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl flex items-center"><Palette className="mr-3 text-primary"/>Customize Your Theme</CardTitle>
@@ -231,6 +243,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
+          {/* Loading spinner while custom themes are generating */}
           {isGeneratingThemes && (
             <Card className="mt-8 shadow-md">
               <CardContent className="p-6">
@@ -242,6 +255,7 @@ export default function DashboardPage() {
             </Card>
           )}
 
+          {/* Display generated custom themes */}
           {generatedCustomThemes.length > 0 && (
             <div className="space-y-6 mt-8">
               <h2 className="text-2xl font-semibold text-center text-primary">Select Your Custom Theme</h2>
@@ -251,18 +265,19 @@ export default function DashboardPage() {
                     <CardHeader>
                       <div className="aspect-video bg-muted rounded-md overflow-hidden mb-4">
                         <Image 
-                          src={`https://placehold.co/600x338.png`}
+                          src={`https://placehold.co/600x338.png`} // Placeholder image URL
                           alt={`Preview for ${theme.themeName}`} 
                           width={600} 
                           height={338} 
                           className="object-cover w-full h-full"
-                          data-ai-hint={theme.previewImagePrompt || "abstract theme"}
+                          data-ai-hint={theme.previewImagePrompt || "abstract theme"} // Use AI hint from theme data
                         />
                       </div>
                       <CardTitle className="text-xl text-accent">{theme.themeName}</CardTitle>
                       <CardDescription>{theme.description}</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow flex flex-col justify-end">
+                       {/* This button used to link to /dashboard/portfolio, now handled by router.push after saving */}
                        <Button onClick={() => handleSelectCustomTheme(theme)} className="w-full mt-auto">
                          Select & View Portfolio <Eye className="ml-2 h-4 w-4"/>
                        </Button>
@@ -273,11 +288,13 @@ export default function DashboardPage() {
             </div>
           )}
           
+          {/* Display Parsed CV Data */}
           <Separator className="my-8"/>
           <ParsedCvDisplay cvData={parsedCvData} />
         </>
       )}
 
+      {/* Initial placeholder message when no CV data and not loading */}
       {!isLoading && !parsedCvData && (
          <Card className="mt-8 shadow-md">
           <CardContent className="p-6">
@@ -294,3 +311,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

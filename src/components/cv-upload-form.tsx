@@ -1,8 +1,7 @@
 
 'use client';
 
-import type { ChangeEvent } from 'react'; // ChangeEvent might not be needed anymore
-import { useState, useEffect } from 'react'; // Added useEffect
+import { useState, useEffect } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,11 +21,11 @@ const ACCEPTED_MIME_TYPES = [
   'text/plain',
 ];
 
-// Zod schema for form validation
 const cvUploadSchema = z.object({
   cvFile: z.any()
     .refine(
       (value): value is FileList => {
+        // Check if FileList is defined (client-side) before using instanceof
         return typeof FileList !== 'undefined' && value instanceof FileList;
       },
       {
@@ -37,8 +36,8 @@ const cvUploadSchema = z.object({
     .refine((files) => files[0] && files[0].size <= 5 * 1024 * 1024, { message: 'Max file size is 5MB.' })
     .refine(
       (files) => {
-        if (files.length === 0) return true;
-        if (!files[0]?.type) return true;
+        if (files.length === 0) return true; // Should be caught by previous refine
+        if (!files[0]?.type) return false; // If no type, consider it invalid for this check
         return ACCEPTED_MIME_TYPES.includes(files[0].type);
       },
       { message: `Invalid file type. Supported: PDF, DOC, DOCX, TXT.` }
@@ -52,7 +51,7 @@ interface CvUploadFormProps {
   onCvParsed: (data: ParseCvOutput) => void;
   onThemeRecommended: (data: RecommendThemeOutput) => void;
   onLoadingChange: (loading: boolean) => void;
-  currentCvData: ParseCvOutput | null;
+  // currentCvData prop removed
 }
 
 export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoadingChange }: CvUploadFormProps) {
@@ -64,8 +63,8 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
     register,
     handleSubmit,
     formState: { errors },
-    watch, // Added watch
-    // setValue, // setValue might be removed if not used elsewhere, or kept for manual resets
+    watch,
+    setValue, // Keep setValue for potential resets if needed, though not used by handleFileChange anymore
   } = useForm<CvUploadFormData>({
     resolver: zodResolver(cvUploadSchema),
   });
@@ -75,10 +74,16 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
   useEffect(() => {
     if (watchedCvFile && watchedCvFile.length > 0 && watchedCvFile[0]) {
       setFileName(watchedCvFile[0].name);
+      // Automatically trigger validation when a file is selected via watch
+      if (watchedCvFile[0].size > 5 * 1024 * 1024 || !ACCEPTED_MIME_TYPES.includes(watchedCvFile[0].type)) {
+        setValue("cvFile", watchedCvFile, { shouldValidate: true });
+      }
     } else {
       setFileName(null);
+      // If file is removed, also ensure validation reflects this
+      setValue("cvFile", new DataTransfer().files, { shouldValidate: true });
     }
-  }, [watchedCvFile]);
+  }, [watchedCvFile, setValue]);
 
 
   const onSubmit: SubmitHandler<CvUploadFormData> = async (data) => {
@@ -202,4 +207,3 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
     </Card>
   );
 }
-    
