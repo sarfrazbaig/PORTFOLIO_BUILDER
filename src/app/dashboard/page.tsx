@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -8,7 +9,9 @@ import ParsedCvDisplay from '@/components/parsed-cv-display';
 import ThemeRecommendationDisplay from '@/components/theme-recommendation-display';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Info } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, Info, ArrowRight, Eye } from 'lucide-react';
+import Link from 'next/link';
 
 export default function DashboardPage() {
   const [parsedCvData, setParsedCvData] = useState<ParseCvOutput | null>(null);
@@ -70,6 +73,18 @@ export default function DashboardPage() {
               <ParsedCvDisplay cvData={parsedCvData} />
             </>
           )}
+        </div>
+      )}
+
+      {!isLoading && parsedCvData && themeRecommendation && (
+        <div className="mt-12 text-center">
+          <Separator className="my-8" />
+          <h2 className="text-2xl font-semibold text-primary mb-4">Ready to see your portfolio?</h2>
+          <Link href="/dashboard/portfolio">
+            <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground px-8 py-6 text-lg">
+              View Your Portfolio <Eye className="ml-2 h-5 w-5" />
+            </Button>
+          </Link>
         </div>
       )}
 
