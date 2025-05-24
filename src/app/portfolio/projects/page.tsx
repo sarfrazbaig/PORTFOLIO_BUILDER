@@ -4,8 +4,9 @@
 import { usePortfolioContext } from '@/contexts/portfolio-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Lightbulb, ExternalLink, Info } from 'lucide-react';
+import { Lightbulb, Info, Layers } from 'lucide-react'; // Replaced ExternalLink with Layers for internal link indication
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function ProjectsPage() {
   const { cvData } = usePortfolioContext();
@@ -22,8 +23,9 @@ export default function ProjectsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              We couldn&apos;t find any project information in your CV data. 
-              If your CV includes a projects section, please try uploading and parsing it again.
+              We couldn&apos;t find any project information in your CV data.
+              The AI is designed to extract projects from your entire CV, not just a dedicated section.
+              If you believe projects are mentioned, please try re-uploading and parsing your CV on the dashboard.
               You will also be able to add projects manually or with AI assistance in a future update.
             </p>
           </CardContent>
@@ -47,36 +49,33 @@ export default function ProjectsPage() {
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
           {projects.map((project, index) => (
-            <Card 
-              key={index} 
-              className="shadow-lg flex flex-col hover:shadow-2xl transition-shadow duration-300 border-2 border-border/30 hover:border-accent group bg-card/90 backdrop-blur-sm overflow-hidden rounded-xl"
-            >
-              <div className="relative overflow-hidden aspect-[16/10]">
-                <Image 
-                  src={`https://placehold.co/600x375.png`} 
-                  alt={project.name || 'Project image'} 
-                  width={600} 
-                  height={375} 
-                  className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-                  data-ai-hint="project application screenshot" // Added data-ai-hint
-                />
-              </div>
-              <CardHeader className="p-6">
-                <CardTitle className="text-xl md:text-2xl text-primary group-hover:text-accent transition-colors">{project.name || 'Untitled Project'}</CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 pt-0 flex-grow">
-                <p className="text-md text-muted-foreground mb-4 whitespace-pre-line leading-relaxed">{project.description || 'No description available.'}</p>
-              </CardContent>
-              {project.url && (
-                <CardContent className="p-6 pt-0 border-t border-border/30 mt-auto">
-                   <a href={project.url} target="_blank" rel="noopener noreferrer" className="block mt-4">
-                    <Button variant="outline" className="w-full group/link text-accent border-accent hover:bg-accent hover:text-accent-foreground transition-all duration-300 transform hover:scale-105 py-3 text-md">
-                        View Project <ExternalLink size={18} className="ml-2 opacity-70 group-hover/link:opacity-100 transition-opacity" />
-                    </Button>
-                  </a>
+            <Link key={index} href={`/portfolio/projects/${encodeURIComponent(project.name || `project-${index}`)}`} passHref>
+              <Card 
+                className="shadow-lg flex flex-col hover:shadow-2xl transition-shadow duration-300 border-2 border-border/30 hover:border-accent group bg-card/90 backdrop-blur-sm overflow-hidden rounded-xl h-full cursor-pointer"
+              >
+                <div className="relative overflow-hidden aspect-[16/10]">
+                  <Image 
+                    src={`https://placehold.co/600x375.png`} 
+                    alt={project.name || 'Project image'} 
+                    width={600} 
+                    height={375} 
+                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                    data-ai-hint="project application screenshot"
+                  />
+                </div>
+                <CardHeader className="p-6">
+                  <CardTitle className="text-xl md:text-2xl text-primary group-hover:text-accent transition-colors">{project.name || 'Untitled Project'}</CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 pt-0 flex-grow">
+                  <p className="text-md text-muted-foreground mb-4 whitespace-pre-line leading-relaxed line-clamp-3">{project.description || 'No description available.'}</p>
                 </CardContent>
-              )}
-            </Card>
+                 <CardContent className="p-6 pt-0 border-t border-border/30 mt-auto">
+                   <Button variant="ghost" className="w-full group/link text-accent hover:text-accent-foreground transition-all duration-300 py-3 text-md mt-4">
+                       View Details <Layers size={18} className="ml-2 opacity-70 group-hover/link:opacity-100 transition-opacity" />
+                   </Button>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       </section>
