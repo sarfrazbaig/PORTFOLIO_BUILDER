@@ -8,12 +8,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Mail, Phone, Linkedin, Github, UserCircle, Sparkles, Upload, Loader2 } from 'lucide-react';
-import Link from 'next/link';
-import Image from 'next/image';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Mail, Phone, Linkedin, Github, UserCircle, Sparkles, Upload, Loader2, ChevronsRight, ArrowDownCircle } from 'lucide-react';
 import AiHelperDialog from '@/components/ai-helper-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 const getInitials = (name?: string) => {
   if (!name) return '??';
@@ -29,7 +28,7 @@ interface AiEditConfig {
 }
 
 export default function PortfolioHomePage() {
-  const { cvData, profession, isEditMode, updateCvField, setCvData } = usePortfolioContext();
+  const { cvData, profession, isEditMode, updateCvField, setCvData, theme } = usePortfolioContext();
   const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
   const [aiEditConfig, setAiEditConfig] = useState<AiEditConfig | null>(null);
   
@@ -38,7 +37,12 @@ export default function PortfolioHomePage() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  if (!cvData) return null; 
+  if (!cvData) return (
+    <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]">
+      <Loader2 className="h-12 w-12 text-primary animate-spin" />
+      <p className="ml-4 text-lg text-muted-foreground">Loading portfolio data...</p>
+    </div>
+  );
 
   const { personalInformation, summary, skills } = cvData;
 
@@ -48,20 +52,16 @@ export default function PortfolioHomePage() {
 
   const handleSummaryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (cvData) {
+      // updateCvField('summary', e.target.value) also works but setCvData is fine for top level
       setCvData({ ...cvData, summary: e.target.value });
     }
   };
   
   const handleProfessionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (cvData && cvData.experience && cvData.experience.length > 0) {
-        const newExperience = [...cvData.experience];
-        newExperience[0] = { ...newExperience[0], title: e.target.value };
-        setCvData({ ...cvData, experience: newExperience });
-    } else if (cvData) { // If no experience, update a placeholder or a new field if desired
-        // For now, this might update the derived profession visually but won't persist robustly without a dedicated field
-        // This is a placeholder for more complex profession editing if needed
-        updateCvField('personalInformation.customProfession', e.target.value); // Example: saving to a custom field
-    }
+     updateCvField('personalInformation.customProfession', e.target.value);
+     // Note: This updates a 'customProfession' field. The displayed 'profession' in context
+     // might still be derived from experience. For full control, the derivation logic in
+     // PortfolioContext or how profession is stored/updated might need adjustment.
   };
 
   const openAiDialog = (content: string, onUpdate: (newText: string) => void, label: string) => {
@@ -79,8 +79,6 @@ export default function PortfolioHomePage() {
       toast({ title: 'Invalid File Type', description: 'Please select an image file.', variant: 'destructive' });
       return;
     }
-    // Optional: Add file size check here
-
     const reader = new FileReader();
     reader.onloadend = () => {
       updateCvField('personalInformation.avatarDataUri', reader.result as string);
@@ -97,9 +95,7 @@ export default function PortfolioHomePage() {
     setIsGeneratingAvatar(true);
     setAvatarError(null);
     toast({ title: 'Generating Avatar...', description: 'The AI is creating your new avatar.' });
-
-    const avatarPrompt = `professional avatar for ${personalInformation.name || 'a professional'}, ${profession || 'in their field'}, high quality digital art, profile picture`;
-
+    const avatarPrompt = `professional headshot avatar for ${personalInformation.name || 'a professional'}, ${profession || 'in their field'}, high quality digital art, profile picture, ${theme?.previewImagePrompt || 'modern style'}`;
     try {
       const result: GenerateImageOutput = await generateImage({ prompt: avatarPrompt });
       if (result.imageDataUri) {
@@ -119,206 +115,282 @@ export default function PortfolioHomePage() {
     }
   };
   
-  const avatarSrc = personalInformation.avatarDataUri || `https://placehold.co/160x160.png?text=${getInitials(personalInformation.name)}`;
-
+  const avatarSrc = personalInformation.avatarDataUri || `https://placehold.co/256x256.png?text=${getInitials(personalInformation.name)}`;
+  const currentSpacing = theme?.themeVariables?.spacingScale || 'regular';
+  const spacingClasses = {
+    compact: 'py-10 md:py-12',
+    regular: 'py-16 md:py-20',
+    spacious: 'py-20 md:py-28',
+  };
 
   return (
     <>
-      {/* Hero/Introduction Section */}
-      <section className="py-16 md:py-24 bg-gradient-to-b from-card via-background to-background border-b border-border/30">
-        <div className="container mx-auto px-6 text-center">
-          <div className="relative inline-block">
-            <Avatar className="h-32 w-32 md:h-40 md:w-40 mx-auto mb-6 border-4 border-primary shadow-xl">
-              <AvatarImage 
-                src={avatarSrc}
-                alt={personalInformation.name || 'User Avatar'} 
-                data-ai-hint="profile portrait"
-                key={avatarSrc} // Force re-render if src changes
-              />
-              <AvatarFallback className="text-4xl md:text-5xl">{getInitials(personalInformation.name)}</AvatarFallback>
-            </Avatar>
-            {isGeneratingAvatar && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-full mb-6">
-                <Loader2 className="h-12 w-12 text-white animate-spin" />
-              </div>
-            )}
-          </div>
+      {/* Hero Section */}
+      <section 
+        className={cn(
+          "relative overflow-hidden bg-gradient-to-br from-background via-card to-background/80 border-b border-border/30",
+          spacingClasses[currentSpacing]
+        )}
+      >
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-primary/20 rounded-full filter blur-3xl animate-pulse-slow" />
+          <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-accent/20 rounded-full filter blur-3xl animate-pulse-slower" />
+        </div>
 
-          {isEditMode && (
-            <div className="max-w-xs mx-auto space-y-2 mt-0 mb-6">
-              <Button onClick={() => avatarFileInputRef.current?.click()} className="w-full" variant="outline" disabled={isGeneratingAvatar}>
-                <Upload size={18} className="mr-2" /> Upload Avatar
-              </Button>
-              <input
+        <div className="container mx-auto px-6 relative z-10">
+          <div className="grid md:grid-cols-5 gap-8 md:gap-12 items-center">
+            <div className="md:col-span-2 flex flex-col items-center md:items-start">
+              <div className="relative group mb-6">
+                <Avatar className="h-48 w-48 md:h-64 md:w-64 border-4 border-primary shadow-2xl group-hover:scale-105 transition-transform duration-300">
+                  <AvatarImage 
+                    src={avatarSrc}
+                    alt={personalInformation.name || 'User Avatar'} 
+                    data-ai-hint="profile portrait professional"
+                    key={avatarSrc}
+                  />
+                  <AvatarFallback className="text-6xl md:text-7xl">{getInitials(personalInformation.name)}</AvatarFallback>
+                </Avatar>
+                {isGeneratingAvatar && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+                    <Loader2 className="h-16 w-16 text-white animate-spin" />
+                  </div>
+                )}
+                {isEditMode && (
+                  <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <Button onClick={() => avatarFileInputRef.current?.click()} size="icon" variant="outline" className="bg-background/80 hover:bg-background" title="Upload Avatar" disabled={isGeneratingAvatar}>
+                      <Upload size={20} />
+                    </Button>
+                    <Button onClick={handleGenerateAvatar} size="icon" variant="outline" className="bg-background/80 hover:bg-background" title="Generate Avatar with AI" disabled={isGeneratingAvatar}>
+                      {isGeneratingAvatar ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
+                    </Button>
+                  </div>
+                )}
+              </div>
+               <input
                 type="file"
                 ref={avatarFileInputRef}
                 onChange={handleAvatarUpload}
                 accept="image/*"
-                style={{ display: 'none' }}
-                id="avatar-upload-input"
+                className="hidden"
+                id="avatar-upload-input-home"
               />
-              <Button onClick={handleGenerateAvatar} className="w-full" disabled={isGeneratingAvatar}>
-                {isGeneratingAvatar ? <Loader2 size={18} className="mr-2 animate-spin" /> : <Sparkles size={18} className="mr-2" />}
-                Generate Avatar (AI)
-              </Button>
-              {avatarError && <p className="text-xs text-destructive mt-1">{avatarError}</p>}
+              {isEditMode && avatarError && <p className="text-xs text-destructive mt-1 text-center md:text-left">{avatarError}</p>}
+              
+              {!isEditMode && (
+                <div className="mt-6 flex flex-wrap justify-center md:justify-start gap-3">
+                  {personalInformation.linkedin && (
+                    <a href={personalInformation.linkedin} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" className="border-primary/50 text-primary hover:bg-primary/10">
+                        <Linkedin size={18} className="mr-2" /> LinkedIn
+                      </Button>
+                    </a>
+                  )}
+                  {personalInformation.github && (
+                    <a href={personalInformation.github} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" className="border-accent/50 text-accent hover:bg-accent/10">
+                        <Github size={18} className="mr-2" /> GitHub
+                      </Button>
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-          
-          {isEditMode ? (
-            <Input
-              type="text"
-              value={personalInformation.name || ''}
-              onChange={(e) => handleInputChange('personalInformation.name', e.target.value)}
-              className="text-4xl md:text-5xl font-extrabold text-foreground mb-2 text-center bg-transparent border-2 border-dashed border-primary/50 focus:border-primary"
-              placeholder="Your Name"
-            />
-          ) : (
-            <h1 className="text-4xl md:text-5xl font-extrabold text-foreground mb-2">
-              Hello, I&apos;m <span className="text-primary">{personalInformation.name}</span>.
-            </h1>
-          )}
 
-          {isEditMode ? (
-             <Input
-              type="text"
-              value={profession || ''}
-              onChange={handleProfessionChange}
-              className="text-2xl md:text-3xl text-muted-foreground font-medium mb-6 text-center bg-transparent border-2 border-dashed border-primary/30 focus:border-primary"
-              placeholder="Your Profession"
-            />
-          ) : (
-            profession && <p className="text-2xl md:text-3xl text-muted-foreground font-medium mb-6">{profession}</p>
-          )}
-          
-          <div className="relative max-w-3xl mx-auto">
-            {isEditMode ? (
-              <Textarea
-                value={summary || ''}
-                onChange={handleSummaryChange}
-                className="text-lg md:text-xl text-muted-foreground leading-relaxed bg-transparent border-2 border-dashed border-primary/30 focus:border-primary min-h-[150px] pr-10"
-                placeholder="Your professional summary..."
-                rows={5}
-              />
-            ) : (
-              summary && (
-                <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
-                  {summary}
-                </p>
-              )
-            )}
-            {isEditMode && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2 text-primary/70 hover:text-primary"
-                onClick={() => openAiDialog(
-                  summary || '',
-                  (newText) => setCvData({ ...cvData, summary: newText }),
-                  'Professional Summary'
+            <div className="md:col-span-3 text-center md:text-left">
+              {isEditMode ? (
+                <Input
+                  type="text"
+                  value={personalInformation.name || ''}
+                  onChange={(e) => handleInputChange('personalInformation.name', e.target.value)}
+                  className="text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground mb-3 text-center md:text-left bg-transparent border-2 border-dashed border-primary/50 focus:border-primary tracking-tight"
+                  placeholder="Your Name"
+                />
+              ) : (
+                <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground mb-3 tracking-tight">
+                  {personalInformation.name || "Your Name"}
+                </h1>
+              )}
+
+              {isEditMode ? (
+                <Input
+                  type="text"
+                  value={personalInformation.customProfession || profession || ''}
+                  onChange={handleProfessionChange}
+                  className="text-xl lg:text-2xl text-primary font-medium mb-6 text-center md:text-left bg-transparent border-2 border-dashed border-primary/30 focus:border-primary"
+                  placeholder="Your Profession / Tagline"
+                />
+              ) : (
+                (personalInformation.customProfession || profession) && (
+                  <p className="text-xl lg:text-2xl text-primary font-medium mb-6">
+                    {personalInformation.customProfession || profession}
+                  </p>
+                )
+              )}
+              
+              <div className="relative max-w-2xl mx-auto md:mx-0">
+                {isEditMode ? (
+                  <Textarea
+                    value={summary || ''}
+                    onChange={handleSummaryChange}
+                    className="text-md lg:text-lg text-muted-foreground leading-relaxed bg-transparent border-2 border-dashed border-primary/30 focus:border-primary min-h-[150px] md:min-h-[180px] pr-10"
+                    placeholder="Craft your professional summary here. Highlight your key strengths and career aspirations..."
+                    rows={6}
+                  />
+                ) : (
+                  summary ? (
+                    <p className="text-md lg:text-lg text-muted-foreground leading-relaxed">
+                      {summary}
+                    </p>
+                  ) : (
+                    <p className="text-md lg:text-lg text-muted-foreground leading-relaxed italic">
+                      Your professional summary will appear here. Go to Edit Mode to add or use AI to generate it.
+                    </p>
+                  )
                 )}
-                title="Rewrite Summary with AI"
-              >
-                <Sparkles size={20} />
-              </Button>
-            )}
-          </div>
-
-          <div className="mt-10 flex flex-wrap justify-center gap-4">
-            {personalInformation.linkedin && (
-              <a href={personalInformation.linkedin} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="lg" className="border-primary text-primary hover:bg-primary/10">
-                  <Linkedin size={20} className="mr-2" /> LinkedIn
-                </Button>
-              </a>
-            )}
-            {personalInformation.github && (
-              <a href={personalInformation.github} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="lg" className="border-accent text-accent hover:bg-accent/10">
-                  <Github size={20} className="mr-2" /> GitHub
-                </Button>
-              </a>
-            )}
-             {personalInformation.email && (
-              <a href={`mailto:${personalInformation.email}`}>
-                <Button variant="outline" size="lg" className="border-foreground/50 text-foreground/80 hover:bg-foreground/10">
-                  <Mail size={20} className="mr-2" /> Email Me
-                </Button>
-              </a>
-            )}
+                {isEditMode && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 text-primary/70 hover:text-primary"
+                    onClick={() => openAiDialog(
+                      summary || '',
+                      (newText) => setCvData(prev => prev ? { ...prev, summary: newText } : null),
+                      'Professional Summary'
+                    )}
+                    title="Rewrite Summary with AI"
+                  >
+                    <Sparkles size={20} />
+                  </Button>
+                )}
+              </div>
+              <div className="mt-8 text-center md:text-left">
+                 <a href="#contact-info">
+                    <Button size="lg" variant="default" className="group shadow-lg hover:shadow-primary/30 transition-shadow">
+                        Get In Touch <ArrowDownCircle size={20} className="ml-2 group-hover:translate-y-0.5 transition-transform"/>
+                    </Button>
+                 </a>
+              </div>
+            </div>
           </div>
         </div>
       </section>
       
-      <div className="container mx-auto py-12 md:py-16 px-6 space-y-16 md:space-y-20">
+      <div className={cn("container mx-auto px-6 space-y-16 md:space-y-20", spacingClasses[currentSpacing])}>
         { (personalInformation.email || personalInformation.phone || isEditMode) &&
-          <Card className="shadow-xl border-l-4 border-primary/70 bg-card/80 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-2xl flex items-center"><UserCircle size={28} className="mr-3 text-primary"/>Contact Information</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-lg">
-              {isEditMode ? (
-                <div className="flex items-center space-x-3">
-                  <Mail size={20} className="text-muted-foreground" />
-                  <Input 
-                    type="email" 
-                    value={personalInformation.email || ''} 
-                    onChange={(e) => handleInputChange('personalInformation.email', e.target.value)}
-                    placeholder="your.email@example.com"
-                    className="bg-transparent border-b-2 border-dashed border-primary/30 focus:border-primary"
-                  />
-                </div>
-              ) : (
-                personalInformation.email && (
-                  <a href={`mailto:${personalInformation.email}`} className="flex items-center space-x-3 text-foreground hover:text-primary transition-colors group">
-                    <Mail size={20} className="text-muted-foreground group-hover:text-primary" /> 
-                    <span>{personalInformation.email}</span>
-                  </a>
-                )
-              )}
-              {isEditMode ? (
-                <div className="flex items-center space-x-3">
-                  <Phone size={20} className="text-muted-foreground" />
-                  <Input 
-                    type="tel" 
-                    value={personalInformation.phone || ''} 
-                    onChange={(e) => handleInputChange('personalInformation.phone', e.target.value)}
-                    placeholder="Your Phone Number"
-                    className="bg-transparent border-b-2 border-dashed border-primary/30 focus:border-primary"
-                  />
-                </div>
-              ) : (
-                personalInformation.phone && (
-                  <p className="flex items-center space-x-3">
-                    <Phone size={20} className="text-muted-foreground" /> <span>{personalInformation.phone}</span>
-                  </p>
-                )
-              )}
-            </CardContent>
-          </Card>
+          <section id="contact-info">
+             <div className="text-center mb-10 md:mb-12">
+                <h2 className="text-3xl md:text-4xl font-bold text-primary flex items-center justify-center">
+                  <UserCircle size={36} className="mr-3"/>Contact Information
+                </h2>
+                <p className="text-lg text-muted-foreground mt-2">How to reach me.</p>
+             </div>
+            <Card className="themed-card shadow-xl border-l-4 border-primary/70 bg-card/80 backdrop-blur-sm max-w-3xl mx-auto">
+              <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 text-lg">
+                {isEditMode ? (
+                  <div className="flex items-center space-x-3">
+                    <Mail size={22} className="text-muted-foreground flex-shrink-0" />
+                    <Input 
+                      type="email" 
+                      value={personalInformation.email || ''} 
+                      onChange={(e) => handleInputChange('personalInformation.email', e.target.value)}
+                      placeholder="your.email@example.com"
+                      className="bg-transparent border-b-2 border-dashed border-primary/30 focus:border-primary"
+                    />
+                  </div>
+                ) : (
+                  personalInformation.email && (
+                    <a href={`mailto:${personalInformation.email}`} className="flex items-center space-x-3 text-foreground hover:text-primary transition-colors group">
+                      <Mail size={22} className="text-muted-foreground group-hover:text-primary flex-shrink-0" /> 
+                      <span>{personalInformation.email}</span>
+                    </a>
+                  )
+                )}
+                {isEditMode ? (
+                  <div className="flex items-center space-x-3">
+                    <Phone size={22} className="text-muted-foreground flex-shrink-0" />
+                    <Input 
+                      type="tel" 
+                      value={personalInformation.phone || ''} 
+                      onChange={(e) => handleInputChange('personalInformation.phone', e.target.value)}
+                      placeholder="Your Phone Number"
+                      className="bg-transparent border-b-2 border-dashed border-primary/30 focus:border-primary"
+                    />
+                  </div>
+                ) : (
+                  personalInformation.phone && (
+                    <p className="flex items-center space-x-3">
+                      <Phone size={22} className="text-muted-foreground flex-shrink-0" /> <span>{personalInformation.phone}</span>
+                    </p>
+                  )
+                )}
+                 {isEditMode && (
+                    <div className="flex items-center space-x-3">
+                        <Linkedin size={22} className="text-muted-foreground flex-shrink-0" />
+                        <Input 
+                        type="url" 
+                        value={personalInformation.linkedin || ''} 
+                        onChange={(e) => handleInputChange('personalInformation.linkedin', e.target.value)}
+                        placeholder="LinkedIn Profile URL"
+                        className="bg-transparent border-b-2 border-dashed border-primary/30 focus:border-primary"
+                        />
+                    </div>
+                )}
+                {isEditMode && (
+                    <div className="flex items-center space-x-3">
+                        <Github size={22} className="text-muted-foreground flex-shrink-0" />
+                        <Input 
+                        type="url" 
+                        value={personalInformation.github || ''} 
+                        onChange={(e) => handleInputChange('personalInformation.github', e.target.value)}
+                        placeholder="GitHub Profile URL"
+                        className="bg-transparent border-b-2 border-dashed border-primary/30 focus:border-primary"
+                        />
+                    </div>
+                )}
+              </CardContent>
+            </Card>
+          </section>
         }
 
         {skills && skills.length > 0 && (
          <section id="skills">
-            <div className="text-center mb-12">
+            <div className="text-center mb-10 md:mb-12">
               <h2 className="text-3xl md:text-4xl font-bold text-primary flex items-center justify-center">
-                <Sparkles size={36} className="mr-4"/>Skills & Expertise
+                <Sparkles size={36} className="mr-3"/>Skills & Expertise
               </h2>
-              <p className="text-lg text-muted-foreground mt-2">Technologies and tools I work with.</p>
+              <p className="text-lg text-muted-foreground mt-2">Key technologies and abilities I bring to the table.</p>
             </div>
-            <Card className="shadow-xl border-l-4 border-primary/70 bg-card/80 backdrop-blur-sm p-6 md:p-8">
+            <Card className="themed-card shadow-xl border-l-4 border-accent/70 bg-card/80 backdrop-blur-sm p-6 md:p-8">
               <CardContent className="pt-2">
-                <div className="flex flex-wrap justify-center gap-4">
+                <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-5">
                   {skills.map((skill, index) => (
-                    <span key={index} className="bg-primary/10 text-primary text-md md:text-lg font-semibold px-6 py-3 rounded-lg shadow-md hover:bg-primary/20 transition-all cursor-default transform hover:scale-105">
+                    <span 
+                        key={index} 
+                        className={cn(
+                            "bg-accent/10 text-accent text-md md:text-lg font-semibold px-5 py-2.5 rounded-lg shadow-md",
+                            "hover:bg-accent/20 transition-all cursor-default transform hover:scale-105",
+                            theme?.cardStyle === 'rounded-elevated' ? 'rounded-xl' : 'rounded-lg',
+                            theme?.cardStyle === 'flat-bordered' ? 'border-2 border-accent/30' : ''
+                        )}
+                    >
                       {skill}
                     </span>
                   ))}
                 </div>
-                {isEditMode && <p className="text-center text-sm text-muted-foreground mt-4 italic">(Skills can be edited on the Skills page)</p>}
+                {isEditMode && <p className="text-center text-sm text-muted-foreground mt-6 italic">(Skills can be added, removed, or reordered on the dedicated Skills page)</p>}
               </CardContent>
             </Card>
           </section>
+        )}
+         {!skills || skills.length === 0 && isEditMode && (
+            <section id="skills-empty-edit">
+                <div className="text-center mb-10 md:mb-12">
+                    <h2 className="text-3xl md:text-4xl font-bold text-primary flex items-center justify-center">
+                        <Sparkles size={36} className="mr-3"/>Skills & Expertise
+                    </h2>
+                </div>
+                <p className="text-center text-muted-foreground">No skills listed. Visit the <a href="/portfolio/skills" className="text-accent hover:underline font-semibold">Skills page</a> in Edit Mode to add your competencies.</p>
+            </section>
         )}
       </div>
       {aiEditConfig && (
@@ -330,6 +402,22 @@ export default function PortfolioHomePage() {
           contextLabel={aiEditConfig.label}
         />
       )}
+       <style jsx global>{`
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 0.1; transform: scale(0.95); }
+          50% { opacity: 0.3; transform: scale(1.05); }
+        }
+        @keyframes pulse-slower {
+          0%, 100% { opacity: 0.05; transform: scale(1); }
+          50% { opacity: 0.2; transform: scale(1.1); }
+        }
+        .animate-pulse-slow {
+          animation: pulse-slow 8s infinite ease-in-out;
+        }
+        .animate-pulse-slower {
+          animation: pulse-slower 10s infinite ease-in-out;
+        }
+      `}</style>
     </>
   );
 }
