@@ -5,14 +5,17 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { usePortfolioContext } from '@/contexts/portfolio-context';
 import type { ParseCvOutput } from '@/ai/flows/cv-parser';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // CardDescription removed as not used directly
+import { generateImage, type GenerateImageOutput } from '@/ai/flows/generate-image-flow';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, ExternalLink, Lightbulb, Code, Zap, Target, Users, ShieldCheck, Sparkles } from 'lucide-react'; // Added Sparkles
-import Image from 'next/image';
+import { ArrowLeft, ExternalLink, Lightbulb, Code, Zap, Target, Users, ShieldCheck, Sparkles, Image as ImageIcon, Loader2 } from 'lucide-react';
+import NextImage from 'next/image'; // Renamed to avoid conflict with ImageIcon
 import { Separator } from '@/components/ui/separator';
-import AiHelperDialog from '@/components/ai-helper-dialog'; // Added AiHelperDialog
+import AiHelperDialog from '@/components/ai-helper-dialog';
+import { useToast } from '@/hooks/use-toast';
+
 
 type ProjectType = ParseCvOutput['projects'][0] & {
   keyFeatures?: string;
@@ -20,6 +23,7 @@ type ProjectType = ParseCvOutput['projects'][0] & {
   challengesSolutions?: string;
   projectGoals?: string;
   technologiesUsed?: string;
+  // imageDataUri and imagePrompt are now part of ParseCvOutput['projects'][0]
 };
 
 const placeholderTexts = {
@@ -42,10 +46,13 @@ export default function ProjectDetailPage() {
   const { cvData, isEditMode, updateCvField } = usePortfolioContext();
   const [project, setProject] = useState<ProjectType | null>(null);
   const [projectIndex, setProjectIndex] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingProjectData, setIsLoadingProjectData] = useState(true);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
   const [aiEditConfig, setAiEditConfig] = useState<AiEditConfig | null>(null);
+  const { toast } = useToast();
 
   const decodedProjectName = useMemo(() => {
     return params.projectName ? decodeURIComponent(params.projectName as string) : null;
@@ -62,7 +69,7 @@ export default function ProjectDetailPage() {
         setProjectIndex(null);
       }
     }
-    setIsLoading(false);
+    setIsLoadingProjectData(false);
   }, [cvData, decodedProjectName]);
 
   const handleProjectFieldChange = (field: keyof ProjectType, value: string) => {
@@ -75,14 +82,48 @@ export default function ProjectDetailPage() {
     setIsAiDialogOpen(true);
   };
 
-  const getProjectField = (fieldName: keyof typeof placeholderTexts) => {
-    return (project && project[fieldName]) || (isEditMode ? '' : placeholderTexts[fieldName]);
+  const handleGenerateProjectImage = async () => {
+    if (!project || !project.imagePrompt || projectIndex === null) {
+      toast({ title: 'Cannot Generate Image', description: 'Project data or image prompt is missing.', variant: 'destructive' });
+      return;
+    }
+    setIsGeneratingImage(true);
+    setImageError(null);
+    toast({ title: 'Generating Project Image...', description: 'Please wait a moment.' });
+
+    try {
+      const result: GenerateImageOutput = await generateImage({ prompt: project.imagePrompt });
+      if (result.imageDataUri) {
+        updateCvField(`projects.${projectIndex}.imageDataUri`, result.imageDataUri);
+        toast({ title: 'Image Generated!', description: 'Project image has been updated.' });
+      } else {
+        const errorMsg = result.error || 'Unknown error during image generation.';
+        setImageError(errorMsg);
+        toast({ title: 'Image Generation Failed', description: errorMsg, variant: 'destructive', duration: 7000 });
+      }
+    } catch (error: any) {
+      console.error('Error generating project image:', error);
+      const errorMsg = error.message || 'Failed to generate project image.';
+      setImageError(errorMsg);
+      toast({ title: 'Image Generation Error', description: errorMsg, variant: 'destructive', duration: 7000 });
+    } finally {
+      setIsGeneratingImage(false);
+    }
   };
 
-  if (isLoading) {
+  const getProjectField = (fieldName: keyof ProjectType, placeholderKey?: keyof typeof placeholderTexts) => {
+    const value = project && project[fieldName];
+    if (value) return String(value);
+    if (isEditMode) return '';
+    return placeholderKey ? placeholderTexts[placeholderKey] : 'Not specified.';
+  };
+
+
+  if (isLoadingProjectData) {
     return (
       <div className="container mx-auto py-12 px-4 md:px-6 text-center">
-        <p className="text-xl text-muted-foreground">Loading project details...</p>
+        <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto" />
+        <p className="text-xl text-muted-foreground mt-4">Loading project details...</p>
       </div>
     );
   }
@@ -113,25 +154,25 @@ export default function ProjectDetailPage() {
     fieldKey: keyof ProjectType,
     icon: React.ReactNode,
     title: string,
-    placeholder: string,
+    placeholderKey: keyof typeof placeholderTexts,
     rows: number = 4
   ) => {
-    const content = getProjectField(fieldKey as keyof typeof placeholderTexts);
+    const content = getProjectField(fieldKey, placeholderKey);
     return (
-      <section id={`project-${fieldKey}`}>
+      <section id={`project-${fieldKey.toString()}`}>
         <h2 className="text-2xl font-semibold text-foreground mb-4 flex items-center">{icon}{title}</h2>
         <div className="relative">
           {isEditMode && projectIndex !== null ? (
             <Textarea
               value={content}
               onChange={(e) => handleProjectFieldChange(fieldKey, e.target.value)}
-              placeholder={placeholder}
+              placeholder={placeholderTexts[placeholderKey]}
               className="text-lg text-muted-foreground leading-relaxed whitespace-pre-line bg-transparent border-2 border-dashed border-primary/30 focus:border-primary min-h-[100px] pr-10"
               rows={rows}
             />
           ) : (
             <p className="text-lg text-muted-foreground leading-relaxed whitespace-pre-line">
-              {content || placeholder}
+              {content}
             </p>
           )}
           {isEditMode && projectIndex !== null && (
@@ -150,13 +191,13 @@ export default function ProjectDetailPage() {
             </Button>
           )}
         </div>
-        {!isEditMode && (!content || content === placeholderTexts[fieldKey as keyof typeof placeholderTexts]) && <p className="mt-3 text-sm text-muted-foreground/80 italic">Hint: Use Edit Mode and the AI Helper to expand on this section!</p>}
+        {!isEditMode && (content === placeholderTexts[placeholderKey]) && <p className="mt-3 text-sm text-muted-foreground/80 italic">Hint: Use Edit Mode and the AI Helper to expand on this section!</p>}
       </section>
     );
   };
   
   const renderTechnologiesSection = () => {
-    const techContent = (project?.technologiesUsed || (isEditMode ? '' : placeholderTexts.technologiesUsed));
+    const techContent = getProjectField('technologiesUsed', 'technologiesUsed');
     return (
        <Card className="shadow-lg">
         <CardHeader>
@@ -168,7 +209,7 @@ export default function ProjectDetailPage() {
             <Textarea
                 value={techContent}
                 onChange={(e) => handleProjectFieldChange('technologiesUsed', e.target.value)}
-                placeholder="Comma-separated list of technologies (e.g., React, Node.js, Python)"
+                placeholder={placeholderTexts.technologiesUsed}
                 className="text-muted-foreground bg-transparent border-2 border-dashed border-primary/30 focus:border-primary min-h-[80px] pr-10"
                 rows={3}
             />
@@ -185,7 +226,7 @@ export default function ProjectDetailPage() {
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="absolute top-0 right-0 text-primary/70 hover:text-primary p-1" // Adjusted positioning
+                    className="absolute top-0 right-0 text-primary/70 hover:text-primary p-1"
                     onClick={() => openAiDialog(
                     techContent,
                     (newText) => handleProjectFieldChange('technologiesUsed', newText),
@@ -247,17 +288,43 @@ export default function ProjectDetailPage() {
           <div className="md:col-span-2 space-y-8">
             <section id="project-overview">
               <h2 className="text-2xl font-semibold text-foreground mb-4 flex items-center"><Lightbulb className="mr-3 text-accent" />Overview</h2>
-              <div className="relative aspect-[16/9] rounded-lg overflow-hidden shadow-lg mb-6 border border-border">
-                <Image
-                  src={`https://placehold.co/800x450.png`}
-                  alt={`${project.name || 'Project'} screenshot`}
-                  layout="fill"
-                  objectFit="cover"
-                  className="transition-transform duration-300 hover:scale-105"
-                  data-ai-hint="project detail main image"
-                />
-                 {isEditMode && <p className="absolute bottom-2 right-2 text-xs bg-black/50 text-white p-1 rounded">Image upload coming soon</p>}
+              
+              <div className="relative aspect-[16/9] rounded-lg overflow-hidden shadow-lg mb-6 border border-border bg-muted">
+                {project.imageDataUri ? (
+                  <NextImage
+                    src={project.imageDataUri}
+                    alt={`${project.name || 'Project'} main image`}
+                    layout="fill"
+                    objectFit="cover"
+                    className="transition-transform duration-300 hover:scale-105"
+                  />
+                ) : (
+                  <NextImage
+                    src={`https://placehold.co/800x450.png`}
+                    alt={`${project.name || 'Project'} placeholder`}
+                    layout="fill"
+                    objectFit="cover"
+                    data-ai-hint={project.imagePrompt || "project details"}
+                  />
+                )}
+                {isGeneratingImage && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                        <Loader2 className="h-12 w-12 text-primary animate-spin"/>
+                    </div>
+                )}
               </div>
+
+              {isEditMode && project.imagePrompt && projectIndex !== null && (
+                <div className="my-4">
+                  <Button onClick={handleGenerateProjectImage} disabled={isGeneratingImage} className="w-full">
+                    {isGeneratingImage ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ImageIcon className="mr-2 h-5 w-5" />}
+                    {project.imageDataUri ? 'Regenerate Project Image' : 'Generate Project Image'}
+                  </Button>
+                  {imageError && <p className="text-sm text-destructive mt-2">{imageError}</p>}
+                  <p className="text-xs text-muted-foreground mt-1 text-center">Using prompt: &quot;{project.imagePrompt}&quot;</p>
+                </div>
+              )}
+              
               <div className="relative">
                 {isEditMode && projectIndex !== null ? (
                   <Textarea
@@ -291,15 +358,15 @@ export default function ProjectDetailPage() {
             </section>
             
             <Separator />
-            {renderEditableSection('keyFeatures', <Zap className="mr-3 text-accent"/>, 'Key Features', placeholderTexts.keyFeatures, 4)}
+            {renderEditableSection('keyFeatures', <Zap className="mr-3 text-accent"/>, 'Key Features', 'keyFeatures', 4)}
             <Separator />
-            {renderEditableSection('myRole', <Users className="mr-3 text-accent"/>, 'My Role', placeholderTexts.myRole, 4)}
+            {renderEditableSection('myRole', <Users className="mr-3 text-accent"/>, 'My Role', 'myRole', 4)}
             <Separator />
-            {renderEditableSection('challengesSolutions', <ShieldCheck className="mr-3 text-accent"/>, 'Challenges & Solutions', placeholderTexts.challengesSolutions, 4)}
+            {renderEditableSection('challengesSolutions', <ShieldCheck className="mr-3 text-accent"/>, 'Challenges & Solutions', 'challengesSolutions', 4)}
           </div>
 
           <aside className="md:col-span-1 space-y-6">
-            {renderEditableSection('projectGoals', <Target className="mr-2 text-primary" />, 'Project Goals', placeholderTexts.projectGoals, 3)}
+            {renderEditableSection('projectGoals', <Target className="mr-2 text-primary" />, 'Project Goals', 'projectGoals', 3)}
             {renderTechnologiesSection()}
           </aside>
         </div>

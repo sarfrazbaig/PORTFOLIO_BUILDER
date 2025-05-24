@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Lightbulb, Info, Layers } from 'lucide-react';
-import Image from 'next/image';
+import NextImage from 'next/image'; // Renamed to avoid conflict
 import Link from 'next/link';
 
 export default function ProjectsPage() {
@@ -26,7 +26,7 @@ export default function ProjectsPage() {
           <CardContent>
             <p className="text-muted-foreground">
               We couldn&apos;t find any project information in your CV data.
-              The AI is designed to extract projects from your entire CV.
+              The AI is designed to extract projects (and image prompts for them) from your entire CV.
               If you believe projects are mentioned, please try re-uploading and parsing your CV on the dashboard.
               {isEditMode && " You can also add projects manually in edit mode (functionality coming soon)."}
             </p>
@@ -59,14 +59,14 @@ export default function ProjectsPage() {
               key={index} 
               className="shadow-lg flex flex-col hover:shadow-2xl transition-shadow duration-300 border-2 border-border/30 hover:border-accent group bg-card/90 backdrop-blur-sm overflow-hidden rounded-xl h-full"
             >
-              <div className="relative overflow-hidden aspect-[16/10]">
-                <Image 
-                  src={`https://placehold.co/600x375.png`} 
+              <div className="relative overflow-hidden aspect-[16/10] bg-muted">
+                <NextImage 
+                  src={project.imageDataUri || `https://placehold.co/600x375.png`} 
                   alt={project.name || 'Project image'} 
                   width={600} 
                   height={375} 
                   className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-                  data-ai-hint="project application screenshot"
+                  data-ai-hint={project.imagePrompt || "application screenshot"}
                 />
               </div>
               <CardHeader className="p-6">
@@ -110,5 +110,3 @@ export default function ProjectsPage() {
     </div>
   );
 }
-
-    
