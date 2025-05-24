@@ -137,14 +137,17 @@ const generateCustomThemesFlow = ai.defineFlow(
                         card: "0 0% 98%", cardForeground: "0 0% 10%",
                         border: "0 0% 90%", input: "0 0% 90%", ring: "210 100% 50%"
                     },
-                    previewImagePrompt: "light default"
+                    previewImagePrompt: "light default" // Ensure fallback has a prompt
                 }
             ]
         };
     }
-    // Ensure all theme variables are present, provide defaults if AI missed any (shouldn't happen with good prompt)
+    // Ensure all theme variables and previewImagePrompt are present
      output.themes = output.themes.map(theme => ({
       ...theme,
+      themeName: theme.themeName || "Unnamed Theme",
+      description: theme.description || "A custom generated theme.",
+      previewImagePrompt: theme.previewImagePrompt || "abstract modern ui", // Added fallback
       themeVariables: {
         background: theme.themeVariables.background || "0 0% 100%",
         foreground: theme.themeVariables.foreground || "0 0% 10%",
@@ -164,4 +167,3 @@ const generateCustomThemesFlow = ai.defineFlow(
     return output;
   }
 );
-
