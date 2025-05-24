@@ -1,14 +1,26 @@
 
 'use client';
 
+import { useState } from 'react'; // Added useState
 import { usePortfolioContext } from '@/contexts/portfolio-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button'; // Added Button
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { GraduationCap, CalendarDays, MapPin } from 'lucide-react';
+import { GraduationCap, CalendarDays, MapPin, Sparkles } from 'lucide-react'; // Added Sparkles
+import AiHelperDialog from '@/components/ai-helper-dialog'; // Added AiHelperDialog
+
+interface AiEditConfig {
+  content: string;
+  onUpdate: (newText: string) => void;
+  label: string;
+}
 
 export default function EducationPage() {
   const { cvData, isEditMode, updateCvField } = usePortfolioContext();
+  const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
+  const [aiEditConfig, setAiEditConfig] = useState<AiEditConfig | null>(null);
+
 
   if (!cvData || !cvData.education || cvData.education.length === 0) {
     return (
@@ -22,6 +34,11 @@ export default function EducationPage() {
 
   const handleInputChange = (index: number, field: string, value: string) => {
     updateCvField(`education.${index}.${field}`, value);
+  };
+
+  const openAiDialog = (content: string, onUpdate: (newText: string) => void, label: string) => {
+    setAiEditConfig({ content, onUpdate, label });
+    setIsAiDialogOpen(true);
   };
 
   return (
@@ -86,25 +103,64 @@ export default function EducationPage() {
               </CardHeader>
               { (edu.description || isEditMode) && (
                 <CardContent className="p-6 md:p-8">
-                   {isEditMode ? (
-                    <Textarea
-                      value={edu.description || ''}
-                      onChange={(e) => handleInputChange(index, 'description', e.target.value)}
-                      placeholder="Relevant details, achievements, thesis..."
-                      className="text-md md:text-lg text-muted-foreground whitespace-pre-line leading-relaxed bg-transparent border-2 border-dashed border-primary/30 focus:border-primary min-h-[100px]"
-                      rows={4}
-                    />
-                  ) : (
-                    edu.description && <p className="text-md md:text-lg text-muted-foreground whitespace-pre-line leading-relaxed">{edu.description}</p>
-                  )}
+                  <div className="relative">
+                    {isEditMode ? (
+                      <Textarea
+                        value={edu.description || ''}
+                        onChange={(e) => handleInputChange(index, 'description', e.target.value)}
+                        placeholder="Relevant details, achievements, thesis..."
+                        className="text-md md:text-lg text-muted-foreground whitespace-pre-line leading-relaxed bg-transparent border-2 border-dashed border-primary/30 focus:border-primary min-h-[100px] pr-10"
+                        rows={4}
+                      />
+                    ) : (
+                      edu.description && <p className="text-md md:text-lg text-muted-foreground whitespace-pre-line leading-relaxed">{edu.description}</p>
+                    )}
+                    {isEditMode && edu.description && (
+                       <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-0 text-primary/70 hover:text-primary"
+                        onClick={() => openAiDialog(
+                          edu.description || '',
+                          (newText) => handleInputChange(index, 'description', newText),
+                          `Description for ${edu.degree}`
+                        )}
+                        title="Rewrite description with AI"
+                      >
+                        <Sparkles size={20} />
+                      </Button>
+                    )}
+                     {isEditMode && !edu.description && (
+                       <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-0 text-primary/70 hover:text-primary"
+                        onClick={() => openAiDialog(
+                          '', // Start with empty content if description doesn't exist
+                          (newText) => handleInputChange(index, 'description', newText),
+                          `Description for ${edu.degree}`
+                        )}
+                        title="Generate description with AI"
+                      >
+                        <Sparkles size={20} />
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               )}
             </Card>
           ))}
         </div>
       </section>
+      {aiEditConfig && (
+        <AiHelperDialog
+          isOpen={isAiDialogOpen}
+          onOpenChange={setIsAiDialogOpen}
+          contentToRewrite={aiEditConfig.content}
+          onContentRewritten={aiEditConfig.onUpdate}
+          contextLabel={aiEditConfig.label}
+        />
+      )}
     </div>
   );
 }
-
-    

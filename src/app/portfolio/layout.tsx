@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { PortfolioProvider, usePortfolioContext } from '@/contexts/portfolio-context';
 import PortfolioHeader from '@/components/portfolio-header';
 import PortfolioFooter from '@/components/portfolio-footer';
-import AiHelperButton from '@/components/ai-helper-button';
+// Removed AiHelperButton import
 import { Loader2, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import Link from 'next/link';
@@ -58,7 +58,7 @@ function PortfolioLayoutContent({ children }: { children: ReactNode }) {
         {children}
       </main>
       <PortfolioFooter />
-      <AiHelperButton />
+      {/* Removed AiHelperButton component usage */}
     </div>
   );
 }

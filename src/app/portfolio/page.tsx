@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useState } from 'react'; // Added useState
 import { usePortfolioContext } from '@/contexts/portfolio-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Mail, Phone, Linkedin, Github, UserCircle, Sparkles, Edit3 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import AiHelperDialog from '@/components/ai-helper-dialog'; // Added AiHelperDialog import
 
 const getInitials = (name?: string) => {
   if (!name) return '??';
@@ -18,8 +20,16 @@ const getInitials = (name?: string) => {
   return (names[0][0] + names[names.length - 1][0]).toUpperCase();
 };
 
+interface AiEditConfig {
+  content: string;
+  onUpdate: (newText: string) => void;
+  label: string;
+}
+
 export default function PortfolioHomePage() {
   const { cvData, profession, isEditMode, updateCvField, setCvData } = usePortfolioContext();
+  const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
+  const [aiEditConfig, setAiEditConfig] = useState<AiEditConfig | null>(null);
 
   if (!cvData) return null; 
 
@@ -29,7 +39,6 @@ export default function PortfolioHomePage() {
     updateCvField(path, value);
   };
 
-  // Specific handler for summary to ensure it updates the top-level summary
   const handleSummaryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (cvData) {
       setCvData({ ...cvData, summary: e.target.value });
@@ -37,23 +46,17 @@ export default function PortfolioHomePage() {
   };
   
   const handleProfessionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // This is a bit more complex as 'profession' is derived.
-    // For now, let's assume we want to update the first job title if it exists,
-    // or a new field if we decide to store profession explicitly.
-    // For simplicity in this step, we'll make the displayed profession editable directly
-    // which won't persist back to the original CV structure easily without more logic.
-    // A better approach might be to edit the data that *derives* profession (e.g., latest job title).
-    // For now, this is a UI-only edit for the 'profession' display.
-    // To persist, we would need to update the context's profession state if it were separate.
-    // Or, update the field that leads to its derivation (e.g. cvData.experience[0].title)
     if (cvData && cvData.experience && cvData.experience.length > 0) {
         const newExperience = [...cvData.experience];
         newExperience[0] = { ...newExperience[0], title: e.target.value };
         setCvData({ ...cvData, experience: newExperience });
     }
-    // If no experience, this won't save back to CV data structure in a meaningful way for profession derivation.
   };
 
+  const openAiDialog = (content: string, onUpdate: (newText: string) => void, label: string) => {
+    setAiEditConfig({ content, onUpdate, label });
+    setIsAiDialogOpen(true);
+  };
 
   return (
     <>
@@ -87,7 +90,7 @@ export default function PortfolioHomePage() {
              <Input
               type="text"
               value={profession || ''}
-              onChange={handleProfessionChange} // This needs careful consideration for persistence
+              onChange={handleProfessionChange}
               className="text-2xl md:text-3xl text-muted-foreground font-medium mb-6 text-center bg-transparent border-2 border-dashed border-primary/30 focus:border-primary"
               placeholder="Your Profession"
             />
@@ -95,21 +98,39 @@ export default function PortfolioHomePage() {
             profession && <p className="text-2xl md:text-3xl text-muted-foreground font-medium mb-6">{profession}</p>
           )}
           
-          {isEditMode ? (
-            <Textarea
-              value={summary || ''}
-              onChange={handleSummaryChange}
-              className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed bg-transparent border-2 border-dashed border-primary/30 focus:border-primary min-h-[150px]"
-              placeholder="Your professional summary..."
-              rows={5}
-            />
-          ) : (
-            summary && (
-              <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-                {summary}
-              </p>
-            )
-          )}
+          <div className="relative max-w-3xl mx-auto">
+            {isEditMode ? (
+              <Textarea
+                value={summary || ''}
+                onChange={handleSummaryChange}
+                className="text-lg md:text-xl text-muted-foreground leading-relaxed bg-transparent border-2 border-dashed border-primary/30 focus:border-primary min-h-[150px] pr-10"
+                placeholder="Your professional summary..."
+                rows={5}
+              />
+            ) : (
+              summary && (
+                <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
+                  {summary}
+                </p>
+              )
+            )}
+            {isEditMode && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 text-primary/70 hover:text-primary"
+                onClick={() => openAiDialog(
+                  summary || '',
+                  (newText) => setCvData({ ...cvData, summary: newText }),
+                  'Professional Summary'
+                )}
+                title="Rewrite Summary with AI"
+              >
+                <Sparkles size={20} />
+              </Button>
+            )}
+          </div>
+
 
           <div className="mt-10 flex flex-wrap justify-center gap-4">
             {personalInformation.linkedin && (
@@ -197,19 +218,26 @@ export default function PortfolioHomePage() {
               <CardContent className="pt-2">
                 <div className="flex flex-wrap justify-center gap-4">
                   {skills.map((skill, index) => (
-                    // Making skills editable would require a more complex UI (e.g., tags input or editing each skill individually)
-                    // For now, skills are not directly editable in this pass.
                     <span key={index} className="bg-primary/10 text-primary text-md md:text-lg font-semibold px-6 py-3 rounded-lg shadow-md hover:bg-primary/20 transition-all cursor-default transform hover:scale-105">
                       {skill}
                     </span>
                   ))}
                 </div>
-                {isEditMode && <p className="text-center text-sm text-muted-foreground mt-4 italic">(Skills editing coming soon via AI Helper or dedicated interface)</p>}
+                {isEditMode && <p className="text-center text-sm text-muted-foreground mt-4 italic">(Skills can be edited on the Skills page)</p>}
               </CardContent>
             </Card>
           </section>
         )}
       </div>
+      {aiEditConfig && (
+        <AiHelperDialog
+          isOpen={isAiDialogOpen}
+          onOpenChange={setIsAiDialogOpen}
+          contentToRewrite={aiEditConfig.content}
+          onContentRewritten={aiEditConfig.onUpdate}
+          contextLabel={aiEditConfig.label}
+        />
+      )}
     </>
   );
 }

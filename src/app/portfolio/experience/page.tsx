@@ -1,14 +1,25 @@
 
 'use client';
 
+import { useState } from 'react'; // Added useState
 import { usePortfolioContext } from '@/contexts/portfolio-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button'; // Added Button
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Briefcase, CalendarDays } from 'lucide-react';
+import { Briefcase, CalendarDays, Sparkles } from 'lucide-react'; // Added Sparkles
+import AiHelperDialog from '@/components/ai-helper-dialog'; // Added AiHelperDialog
+
+interface AiEditConfig {
+  content: string;
+  onUpdate: (newText: string) => void;
+  label: string;
+}
 
 export default function ExperiencePage() {
   const { cvData, isEditMode, updateCvField } = usePortfolioContext();
+  const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
+  const [aiEditConfig, setAiEditConfig] = useState<AiEditConfig | null>(null);
 
   if (!cvData || !cvData.experience || cvData.experience.length === 0) {
     return (
@@ -22,6 +33,11 @@ export default function ExperiencePage() {
 
   const handleInputChange = (index: number, field: string, value: string) => {
     updateCvField(`experience.${index}.${field}`, value);
+  };
+
+  const openAiDialog = (content: string, onUpdate: (newText: string) => void, label: string) => {
+    setAiEditConfig({ content, onUpdate, label });
+    setIsAiDialogOpen(true);
   };
 
   return (
@@ -80,24 +96,48 @@ export default function ExperiencePage() {
                 </div>
               </CardHeader>
               <CardContent className="p-6 md:p-8">
-                {isEditMode ? (
-                  <Textarea
-                    value={exp.description}
-                    onChange={(e) => handleInputChange(index, 'description', e.target.value)}
-                    placeholder="Role description and achievements..."
-                    className="text-md md:text-lg text-muted-foreground whitespace-pre-line leading-relaxed bg-transparent border-2 border-dashed border-primary/30 focus:border-primary min-h-[120px]"
-                    rows={5}
-                  />
-                ) : (
-                  <p className="text-md md:text-lg text-muted-foreground whitespace-pre-line leading-relaxed">{exp.description}</p>
-                )}
+                <div className="relative">
+                  {isEditMode ? (
+                    <Textarea
+                      value={exp.description}
+                      onChange={(e) => handleInputChange(index, 'description', e.target.value)}
+                      placeholder="Role description and achievements..."
+                      className="text-md md:text-lg text-muted-foreground whitespace-pre-line leading-relaxed bg-transparent border-2 border-dashed border-primary/30 focus:border-primary min-h-[120px] pr-10"
+                      rows={5}
+                    />
+                  ) : (
+                    <p className="text-md md:text-lg text-muted-foreground whitespace-pre-line leading-relaxed">{exp.description}</p>
+                  )}
+                  {isEditMode && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-0 text-primary/70 hover:text-primary"
+                      onClick={() => openAiDialog(
+                        exp.description,
+                        (newText) => handleInputChange(index, 'description', newText),
+                        `Description for ${exp.title}`
+                      )}
+                      title="Rewrite description with AI"
+                    >
+                      <Sparkles size={20} />
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
       </section>
+      {aiEditConfig && (
+        <AiHelperDialog
+          isOpen={isAiDialogOpen}
+          onOpenChange={setIsAiDialogOpen}
+          contentToRewrite={aiEditConfig.content}
+          onContentRewritten={aiEditConfig.onUpdate}
+          contextLabel={aiEditConfig.label}
+        />
+      )}
     </div>
   );
 }
-
-    
