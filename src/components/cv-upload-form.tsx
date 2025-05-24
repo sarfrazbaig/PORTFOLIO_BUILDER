@@ -25,10 +25,10 @@ const ACCEPTED_MIME_TYPES = [
 const cvUploadSchema = z.object({
   cvFile: z
     .custom<FileList>((val) => val instanceof FileList, 'CV file must be a FileList.')
-    .refine((files) => files.length > 0, 'CV file is required.')
+    .refine((files) => files && files.length > 0, 'CV file is required.')
     .refine((files) => files?.[0]?.size <= 5 * 1024 * 1024, 'Max file size is 5MB.')
     .refine(
-      (files) => ACCEPTED_MIME_TYPES.includes(files?.[0]?.type),
+      (files) => files?.[0]?.type ? ACCEPTED_MIME_TYPES.includes(files[0].type) : false,
       'Invalid file type. Supported: PDF, DOC, DOCX, TXT.'
     ),
   profession: z.string().min(3, 'Profession is required (min 3 characters).').max(100),
@@ -53,25 +53,23 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
     handleSubmit,
     formState: { errors },
     reset,
-    setValue, // We will use setValue from react-hook-form
+    setValue,
   } = useForm<CvUploadFormData>({
     resolver: zodResolver(cvUploadSchema),
   });
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const currentFiles = event.target.files; // This is FileList | null
-    const file = currentFiles?.[0];
+    const selectedFile = event.target.files?.[0];
 
-    if (file) {
-      setFileName(file.name);
-      // When a file is selected, currentFiles is a FileList with one item.
-      setValue("cvFile", currentFiles, { shouldValidate: true });
+    if (selectedFile) {
+      setFileName(selectedFile.name);
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(selectedFile);
+      setValue("cvFile", dataTransfer.files, { shouldValidate: true });
     } else {
       setFileName(null);
-      // If no file is selected (e.g., user cancels dialog),
-      // currentFiles might be null or an empty FileList.
-      // The schema expects a FileList, so provide an empty one if null.
-      setValue("cvFile", currentFiles || new DataTransfer().files, { shouldValidate: true });
+      // Create an empty FileList if no file is selected or selection is cleared
+      setValue("cvFile", new DataTransfer().files, { shouldValidate: true });
     }
   };
 
@@ -81,7 +79,7 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
     toast({ title: 'Processing CV...', description: 'Please wait while we analyze your CV.' });
 
     try {
-      const file = data.cvFile[0]; // data.cvFile should now be a valid FileList
+      const file = data.cvFile[0]; 
       const reader = new FileReader();
 
       reader.onloadend = async () => {
@@ -176,7 +174,7 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
             {errors.profession && <p className="text-sm text-destructive">{errors.profession.message}</p>}
           </div>
 
-          <Button type="submit" className="w-full text-lg py-6" disabled={isProcessing || !!errors.cvFile}>
+          <Button type="submit" className="w-full text-lg py-6" disabled={isProcessing || !!errors.cvFile || !!errors.profession}>
             {isProcessing ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -191,4 +189,3 @@ export default function CvUploadForm({ onCvParsed, onThemeRecommended, onLoading
     </Card>
   );
 }
-
