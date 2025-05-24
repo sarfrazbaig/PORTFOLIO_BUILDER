@@ -21,10 +21,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 const CV_DATA_KEY = 'cvPortfolioData';
 const THEME_RECOMMENDATION_KEY = 'cvPortfolioTheme';
+const AVAILABLE_THEMES_KEY = 'cvPortfolioAvailableThemes'; // New key for storing all generated themes
 
 // Extend CustomThemeOutput to include image generation state
 interface CustomThemeWithImageState extends CustomThemeOutput {
@@ -45,6 +47,7 @@ export default function DashboardPage() {
   });
   const [generatedCustomThemesWithImages, setGeneratedCustomThemesWithImages] = useState<CustomThemeWithImageState[]>([]);
   const [isGeneratingThemes, setIsGeneratingThemes] = useState(false);
+  const [selectedThemeNameForPreview, setSelectedThemeNameForPreview] = useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -58,12 +61,26 @@ export default function DashboardPage() {
     if (storedTheme) {
       try {
         const theme = JSON.parse(storedTheme) as PortfolioTheme;
-        if (!theme.themeVariables) {
+        if (!theme.themeVariables) { // This is a basic theme recommendation
             setInitialThemeRecommendation({themeName: theme.themeName, reason: theme.reason || ''});
         }
       } catch (e) { console.error("Failed to parse theme recommendation", e); localStorage.removeItem(THEME_RECOMMENDATION_KEY); }
     }
-  }, []);
+     // Load previously generated custom themes for preview consistency if user navigates away and back
+    const storedAvailableThemes = localStorage.getItem(AVAILABLE_THEMES_KEY);
+    if (storedAvailableThemes) {
+        try {
+            const themes = JSON.parse(storedAvailableThemes) as CustomThemeWithImageState[];
+            setGeneratedCustomThemesWithImages(themes);
+            if (themes.length > 0 && !selectedThemeNameForPreview) {
+                setSelectedThemeNameForPreview(themes[0].themeName);
+            }
+        } catch (e) {
+            console.error("Failed to parse stored available themes", e);
+            localStorage.removeItem(AVAILABLE_THEMES_KEY);
+        }
+    }
+  }, [selectedThemeNameForPreview]);
 
   const handleCvParsed = (data: ParseCvOutput) => {
     setParsedCvData(data);
@@ -72,7 +89,10 @@ export default function DashboardPage() {
 
   const handleInitialThemeRecommended = (data: RecommendThemeOutput) => {
     setInitialThemeRecommendation(data);
-    localStorage.setItem(THEME_RECOMMENDATION_KEY, JSON.stringify(data));
+    // Save this initial recommendation if no custom theme is selected yet.
+    // This will be overwritten if a custom theme is later chosen.
+    const basicTheme: PortfolioTheme = { themeName: data.themeName, reason: data.reason };
+    localStorage.setItem(THEME_RECOMMENDATION_KEY, JSON.stringify(basicTheme));
   };
 
   const handleLoadingChange = (loading: boolean) => {
@@ -90,7 +110,8 @@ export default function DashboardPage() {
     }
     setIsGeneratingThemes(true);
     setGeneratedCustomThemesWithImages([]);
-    toast({ title: "Generating Custom Themes...", description: "The AI is crafting options and preview images." });
+    setSelectedThemeNameForPreview(null); // Reset preview selection
+    toast({ title: "Generating Custom Themes...", description: "The AI is crafting options." });
     try {
       const input: CustomThemePreferencesInput = {
         ...customThemePreferences,
@@ -101,7 +122,12 @@ export default function DashboardPage() {
       if (result.themes && result.themes.length > 0) {
         toast({ title: "Custom Themes Generated!", description: "Now generating preview images..." });
         const themesWithLoadingState: CustomThemeWithImageState[] = result.themes.map(theme => ({ ...theme, isLoadingImage: true, imageDataUri: undefined, error: undefined }));
+        
+        // Save to localStorage immediately for header dropdown
+        localStorage.setItem(AVAILABLE_THEMES_KEY, JSON.stringify(themesWithLoadingState.map(t => ({...t, isLoadingImage: undefined, error: undefined})))); // Store clean theme objects
+        
         setGeneratedCustomThemesWithImages(themesWithLoadingState);
+        setSelectedThemeNameForPreview(themesWithLoadingState[0].themeName); // Auto-select first for preview
 
         themesWithLoadingState.forEach(async (theme, index) => {
           let finalPrompt = theme.previewImagePrompt || "abstract theme representation";
@@ -114,12 +140,16 @@ export default function DashboardPage() {
               const imageResult = await generateImage({ prompt: finalPrompt });
               setGeneratedCustomThemesWithImages(prevThemes => {
                 const newThemes = [...prevThemes];
-                newThemes[index] = {
-                  ...newThemes[index],
-                  imageDataUri: imageResult.imageDataUri,
-                  isLoadingImage: false,
-                  error: imageResult.imageDataUri ? undefined : imageResult.error || "Failed to generate image.",
-                };
+                if (newThemes[index]) {
+                    newThemes[index] = {
+                        ...newThemes[index],
+                        imageDataUri: imageResult.imageDataUri,
+                        isLoadingImage: false,
+                        error: imageResult.imageDataUri ? undefined : imageResult.error || "Failed to generate image.",
+                    };
+                }
+                // Update localStorage with image data if needed for persistence across sessions on dashboard
+                localStorage.setItem(AVAILABLE_THEMES_KEY, JSON.stringify(newThemes.map(t => ({...t, isLoadingImage: undefined, error: undefined}))));
                 return newThemes;
               });
               if (imageResult.error && !imageResult.imageDataUri) {
@@ -130,14 +160,20 @@ export default function DashboardPage() {
               toast({ title: `Image Gen Failed: ${theme.themeName}`, description: imgError.message || "Unknown error.", variant: "destructive", duration: 8000 });
               setGeneratedCustomThemesWithImages(prevThemes => {
                 const newThemes = [...prevThemes];
-                newThemes[index] = { ...newThemes[index], isLoadingImage: false, error: imgError.message || "Image generation process failed." };
+                 if (newThemes[index]) {
+                    newThemes[index] = { ...newThemes[index], isLoadingImage: false, error: imgError.message || "Image generation process failed." };
+                }
+                localStorage.setItem(AVAILABLE_THEMES_KEY, JSON.stringify(newThemes.map(t => ({...t, isLoadingImage: undefined, error: undefined}))));
                 return newThemes;
               });
             }
           } else {
             setGeneratedCustomThemesWithImages(prevThemes => {
               const newThemes = [...prevThemes];
-              newThemes[index] = { ...newThemes[index], isLoadingImage: false, error: "No valid prompt for image." };
+              if (newThemes[index]) {
+                newThemes[index] = { ...newThemes[index], isLoadingImage: false, error: "No valid prompt for image." };
+              }
+              localStorage.setItem(AVAILABLE_THEMES_KEY, JSON.stringify(newThemes.map(t => ({...t, isLoadingImage: undefined, error: undefined}))));
               return newThemes;
             });
             toast({ title: `Image Skipped: ${theme.themeName}`, description: "No preview image prompt provided.", variant: "default" });
@@ -145,25 +181,34 @@ export default function DashboardPage() {
         });
       } else {
         toast({ title: "No Themes Generated", description: "The AI couldn't generate themes. Try adjusting preferences.", variant: "destructive" });
+         localStorage.removeItem(AVAILABLE_THEMES_KEY); // Clear if no themes
       }
     } catch (error) {
       console.error("Custom theme generation error:", error);
       toast({ title: "Theme Generation Failed", description: "An error occurred. Please try again.", variant: "destructive" });
+      localStorage.removeItem(AVAILABLE_THEMES_KEY); // Clear on error
     } finally {
-      setIsGeneratingThemes(false); // This should be set after all image attempts ideally, but for now this is okay.
+      setIsGeneratingThemes(false);
     }
   };
 
-  const handleSelectCustomTheme = (theme: CustomThemeWithImageState) => {
+  const handleSelectCustomTheme = (themeToApply: CustomThemeWithImageState | undefined) => {
+    if (!themeToApply) {
+        toast({title: "No theme selected", description: "Please select a theme from the dropdown.", variant: "destructive"});
+        return;
+    }
+    // The theme object for the context should not include dashboard-specific states like isLoadingImage
     const portfolioThemeToSave: PortfolioTheme = {
-      themeName: theme.themeName,
-      reason: theme.description,
-      themeVariables: theme.themeVariables,
-      previewImagePrompt: theme.previewImagePrompt,
-      // We don't store the imageDataUri in localStorage as it can be large
+      themeName: themeToApply.themeName,
+      description: themeToApply.description,
+      themeVariables: themeToApply.themeVariables,
+      previewImagePrompt: themeToApply.previewImagePrompt,
+      // previewImageDataUri is primarily for dashboard preview, not critical for portfolio rendering context
+      // but can be included if desired for consistency.
+      previewImageDataUri: themeToApply.imageDataUri 
     };
     localStorage.setItem(THEME_RECOMMENDATION_KEY, JSON.stringify(portfolioThemeToSave));
-    toast({ title: "Theme Selected!", description: `"${theme.themeName}" applied. Redirecting to portfolio...` });
+    toast({ title: "Theme Selected!", description: `"${themeToApply.themeName}" applied. Redirecting to portfolio...` });
     router.push('/portfolio');
   };
   
@@ -172,13 +217,16 @@ export default function DashboardPage() {
       setParsedCvData(null);
       setInitialThemeRecommendation(null);
       setGeneratedCustomThemesWithImages([]);
+      setSelectedThemeNameForPreview(null);
       localStorage.removeItem(CV_DATA_KEY);
       localStorage.removeItem(THEME_RECOMMENDATION_KEY);
+      localStorage.removeItem(AVAILABLE_THEMES_KEY);
       toast({ title: "Data Cleared", description: "Ready for a new CV upload." });
     }
   };
 
   const isLoading = isLoadingCv || isGeneratingThemes;
+  const currentPreviewTheme = generatedCustomThemesWithImages.find(t => t.themeName === selectedThemeNameForPreview);
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6 space-y-10">
@@ -219,7 +267,7 @@ export default function DashboardPage() {
 
       {!isLoadingCv && parsedCvData && (
         <>
-          {initialThemeRecommendation && !generatedCustomThemesWithImages.length && !isGeneratingThemes && (
+          {initialThemeRecommendation && generatedCustomThemesWithImages.length === 0 && !isGeneratingThemes && (
             <ThemeRecommendationDisplay recommendation={initialThemeRecommendation} />
           )}
           <Separator />
@@ -256,7 +304,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <Label htmlFor="mode" className="text-base font-semibold">Light or Dark Mode</Label>
-                <RadioGroup id="mode" value={customThemePreferences.mode} onValueChange={(value) => handlePreferenceChange('mode', value)} className="mt-2 flex space-x-4">
+                <RadioGroup id="mode" value={customThemePreferences.mode} onValueChange={(value) => handlePreferenceChange('mode', value as 'light' | 'dark' | 'system')} className="mt-2 flex space-x-4">
                    {[{value: 'light', label: 'Light'}, {value: 'dark', label: 'Dark'}, {value: 'system', label: 'System Default'}].map(m => (
                      <div key={m.value} className="flex items-center space-x-2">
                         <RadioGroupItem value={m.value} id={`mode-${m.value}`} />
@@ -282,7 +330,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {isGeneratingThemes && generatedCustomThemesWithImages.length === 0 && ( // Show this only if NO themes are displayed yet
+          {isGeneratingThemes && generatedCustomThemesWithImages.length === 0 && ( 
             <Card className="mt-8 shadow-md">
               <CardContent className="p-6">
                 <div className="flex flex-col items-center justify-center py-12 space-y-4">
@@ -296,52 +344,69 @@ export default function DashboardPage() {
           {generatedCustomThemesWithImages.length > 0 && (
             <div className="space-y-6 mt-8">
               <h2 className="text-2xl font-semibold text-center text-primary">Select Your Custom Theme</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {generatedCustomThemesWithImages.map((theme, index) => (
-                  <Card key={index} className="shadow-md hover:shadow-xl transition-shadow flex flex-col">
-                    <CardHeader className="p-4"> {/* Reduced padding for header */}
+                <div className="max-w-md mx-auto">
+                    <Select 
+                        value={selectedThemeNameForPreview || undefined} 
+                        onValueChange={(value) => setSelectedThemeNameForPreview(value)}
+                    >
+                        <SelectTrigger className="w-full text-lg py-3">
+                            <SelectValue placeholder="Choose a theme to preview..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {generatedCustomThemesWithImages.map((theme) => (
+                            <SelectItem key={theme.themeName} value={theme.themeName}>
+                                {theme.themeName}
+                            </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+              {currentPreviewTheme && (
+                  <Card key={currentPreviewTheme.themeName} className="shadow-md hover:shadow-xl transition-shadow flex flex-col max-w-lg mx-auto my-4">
+                    <CardHeader className="p-4">
                       <div className="aspect-video bg-muted rounded-md overflow-hidden mb-3 relative">
-                        {theme.isLoadingImage && (
+                        {currentPreviewTheme.isLoadingImage && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black/10">
                             <Loader2 className="h-8 w-8 text-primary animate-spin" />
                           </div>
                         )}
                         <Image 
                           src={
-                            theme.isLoadingImage ? `https://placehold.co/600x338.png?text=Loading...` :
-                            theme.imageDataUri ? theme.imageDataUri :
-                            theme.error ? `https://placehold.co/600x338.png?text=Error` :
+                            currentPreviewTheme.isLoadingImage ? `https://placehold.co/600x338.png?text=Loading...` :
+                            currentPreviewTheme.imageDataUri ? currentPreviewTheme.imageDataUri :
+                            currentPreviewTheme.error ? `https://placehold.co/600x338.png?text=Error` :
                             `https://placehold.co/600x338.png` 
                           }
-                          alt={`Preview for ${theme.themeName}`} 
+                          alt={`Preview for ${currentPreviewTheme.themeName}`} 
                           width={600} 
                           height={338} 
                           className="object-cover w-full h-full"
-                          data-ai-hint={theme.previewImagePrompt || "abstract theme"}
-                          onError={(e) => { // Basic error handling for Image component itself
+                          data-ai-hint={currentPreviewTheme.previewImagePrompt || "abstract theme"}
+                          onError={(e) => { 
                             e.currentTarget.src = `https://placehold.co/600x338.png?text=LoadFail`;
                             setGeneratedCustomThemesWithImages(prev => {
                                 const newThemes = [...prev];
-                                if(newThemes[index]) newThemes[index].error = "Image element failed to load source.";
+                                const themeIndex = newThemes.findIndex(t => t.themeName === currentPreviewTheme.themeName);
+                                if(themeIndex > -1 && newThemes[themeIndex]) newThemes[themeIndex].error = "Image element failed to load source.";
                                 return newThemes;
                             });
                           }}
                         />
                       </div>
-                      <CardTitle className="text-xl text-accent">{theme.themeName}</CardTitle>
-                      <CardDescription className="text-sm">{theme.description}</CardDescription>
-                       {theme.error && !theme.isLoadingImage && (
-                        <p className="text-xs text-destructive mt-1">Image Error: {theme.error.length > 100 ? theme.error.substring(0,100) + '...' : theme.error}</p>
+                      <CardTitle className="text-xl text-accent">{currentPreviewTheme.themeName}</CardTitle>
+                      <CardDescription className="text-sm">{currentPreviewTheme.description}</CardDescription>
+                       {currentPreviewTheme.error && !currentPreviewTheme.isLoadingImage && (
+                        <p className="text-xs text-destructive mt-1">Image Error: {currentPreviewTheme.error.length > 100 ? currentPreviewTheme.error.substring(0,100) + '...' : currentPreviewTheme.error}</p>
                       )}
                     </CardHeader>
                     <CardContent className="p-4 pt-0 flex-grow flex flex-col justify-end">
-                       <Button onClick={() => handleSelectCustomTheme(theme)} className="w-full mt-auto">
-                         Select & View Portfolio <Eye className="ml-2 h-4 w-4"/>
+                       <Button onClick={() => handleSelectCustomTheme(currentPreviewTheme)} className="w-full mt-auto" size="lg" disabled={!currentPreviewTheme}>
+                         Apply & View Portfolio <Eye className="ml-2 h-4 w-4"/>
                        </Button>
                     </CardContent>
                   </Card>
-                ))}
-              </div>
+              )}
             </div>
           )}
           
@@ -366,4 +431,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

@@ -2,20 +2,30 @@
 'use client';
 
 import Link from 'next/link';
-import { Briefcase, Palette, Menu, X, User, BookOpen, Sparkles, Lightbulb, HomeIcon, Moon, Sun, Edit3, Eye, Trash2, RotateCcw } from 'lucide-react'; // Added Trash2 or RotateCcw
+import { Briefcase, Palette, Menu, X, User, BookOpen, Sparkles, Lightbulb, HomeIcon, Moon, Sun, Edit3, Eye, Trash2, RotateCcw, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePortfolioContext } from '@/contexts/portfolio-context';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useTheme as useNextTheme } from 'next-themes';
-import { useRouter } from 'next/navigation'; // Added useRouter
+import { useRouter } from 'next/navigation';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export default function PortfolioHeader() {
-  const { cvData, theme, profession, isEditMode, toggleEditMode, setCvData, setTheme: setPortfolioTheme } = usePortfolioContext(); // Added setCvData, setPortfolioTheme
+  const { cvData, theme, setTheme: setActiveTheme, profession, isEditMode, toggleEditMode, setCvData, availableThemes } = usePortfolioContext();
   const { theme: actualTheme, setTheme: setActualTheme } = useNextTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const router = useRouter(); // Initialized useRouter
+  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
@@ -29,16 +39,26 @@ export default function PortfolioHeader() {
     { href: '/portfolio/skills', label: 'Skills', icon: <Sparkles size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors" /> },
   ];
 
-  const toggleTheme = () => {
+  const toggleUiTheme = () => {
     setActualTheme(actualTheme === 'light' ? 'dark' : 'light');
   };
 
   const handleDiscardPortfolio = () => {
     if (window.confirm('Are you sure you want to discard all portfolio data and start over? This action cannot be undone.')) {
       setCvData(null);
-      setPortfolioTheme(null);
+      setActiveTheme(null);
+      // Also clear available themes from local storage if desired, though context re-init will handle it
+      localStorage.removeItem('cvPortfolioAvailableThemes'); 
       router.push('/dashboard');
     }
+  };
+
+  const handleThemeSelection = (selectedThemeName: string) => {
+    const newTheme = availableThemes?.find(t => t.themeName === selectedThemeName);
+    if (newTheme) {
+      setActiveTheme(newTheme);
+    }
+    setIsMobileMenuOpen(false); // Close mobile menu if open
   };
 
   if (!mounted) {
@@ -73,17 +93,34 @@ export default function PortfolioHeader() {
           </nav>
           
           <div className="flex items-center space-x-1 sm:space-x-2">
-            {theme && (
-              <div className="hidden sm:flex items-center space-x-2 bg-primary/10 px-3 py-1.5 rounded-lg shadow-sm">
-                <Palette size={16} className="text-primary/80"/>
-                <span className="text-xs font-semibold text-primary">{theme.themeName} Theme</span>
-              </div>
+            {theme && availableThemes && availableThemes.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="hidden sm:inline-flex items-center space-x-2 bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-lg shadow-sm text-xs font-semibold">
+                    <Palette size={16} className="text-primary/80"/>
+                    <span>{theme.themeName}</span>
+                    <ChevronDown size={16} className="opacity-70" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Switch Theme</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuRadioGroup value={theme.themeName} onValueChange={handleThemeSelection}>
+                    {availableThemes.map((availTheme) => (
+                      <DropdownMenuRadioItem key={availTheme.themeName} value={availTheme.themeName}>
+                        {availTheme.themeName}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
+            
              <Button
                 variant="ghost"
                 size="icon"
-                onClick={toggleTheme}
-                aria-label="Toggle theme"
+                onClick={toggleUiTheme}
+                aria-label="Toggle UI theme"
                 className="hidden md:inline-flex text-muted-foreground hover:text-primary"
                 title="Toggle light/dark mode"
               >
@@ -126,6 +163,7 @@ export default function PortfolioHeader() {
             </div>
           </div>
         </div>
+        
         {/* Mobile Menu */}
         <div
           className={cn(
@@ -148,21 +186,30 @@ export default function PortfolioHeader() {
              <Button
                 variant="ghost"
                 onClick={() => {
-                  toggleTheme();
+                  toggleUiTheme();
                   setIsMobileMenuOpen(false);
                 }}
-                aria-label="Toggle theme"
+                aria-label="Toggle UI theme"
                 className="w-full justify-start text-muted-foreground hover:text-primary py-3 text-base flex items-center"
                 title="Toggle light/dark mode"
               >
                 {actualTheme === 'light' ? <Moon size={18} className="mr-2"/> : <Sun size={18} className="mr-2"/>}
-                Toggle Theme
+                Toggle UI Theme
               </Button>
-            {theme && (
-              <div className="sm:hidden flex items-center space-x-2 bg-primary/10 px-3 py-2 rounded-lg shadow-sm mt-2 text-sm">
-                <Palette size={16} className="text-primary/80"/>
-                <span className="font-semibold text-primary">{theme.themeName} Theme</span>
-              </div>
+            {theme && availableThemes && availableThemes.length > 0 && (
+                 <div className="pt-2">
+                    <p className="px-3 py-2 text-sm font-semibold text-muted-foreground">Switch Portfolio Theme:</p>
+                    {availableThemes.map((availTheme) => (
+                        <Button
+                            key={availTheme.themeName}
+                            variant={theme.themeName === availTheme.themeName ? "secondary" : "ghost"}
+                            className="w-full justify-start text-muted-foreground hover:text-primary py-3 text-base"
+                            onClick={() => handleThemeSelection(availTheme.themeName)}
+                        >
+                            <Palette size={18} className="mr-2" /> {availTheme.themeName}
+                        </Button>
+                    ))}
+                 </div>
             )}
           </nav>
         </div>
