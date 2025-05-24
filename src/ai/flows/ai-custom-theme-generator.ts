@@ -12,7 +12,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-export const CustomThemePreferencesInputSchema = z.object({
+const CustomThemePreferencesInputSchema = z.object({
   vibe: z.string().describe("The overall vibe the user is going for (e.g., 'Professional & Serious', 'Modern & Sleek', 'Creative & Playful', 'Minimalist & Clean')."),
   colorPreference: z.string().describe("User's preferred color palette (e.g., 'Cool Blues', 'Warm Earth Tones', 'Vibrant & Energetic', 'Monochromatic')."),
   mode: z.enum(['light', 'dark', 'system']).describe("Preferred color scheme mode: light, dark, or system default."),
@@ -21,7 +21,7 @@ export const CustomThemePreferencesInputSchema = z.object({
 });
 export type CustomThemePreferencesInput = z.infer<typeof CustomThemePreferencesInputSchema>;
 
-export const CustomThemeVariablesSchema = z.object({
+const CustomThemeVariablesSchema = z.object({
   background: z.string().describe("HSL value for background (e.g., '0 0% 100%')."),
   foreground: z.string().describe("HSL value for foreground text (e.g., '0 0% 10%')."),
   primary: z.string().describe("HSL value for primary elements (e.g., '210 100% 50%')."),
@@ -38,7 +38,7 @@ export const CustomThemeVariablesSchema = z.object({
 });
 export type CustomThemeVariables = z.infer<typeof CustomThemeVariablesSchema>;
 
-export const CustomThemeOutputSchema = z.object({
+const CustomThemeOutputSchema = z.object({
   themeName: z.string().describe("A descriptive name for the generated theme (e.g., 'Ocean Breeze Dark', 'Sunset Minimalist')."),
   description: z.string().describe("A brief description of the theme and why it fits the preferences."),
   themeVariables: CustomThemeVariablesSchema,
