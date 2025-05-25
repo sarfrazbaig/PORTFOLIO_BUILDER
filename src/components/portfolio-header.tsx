@@ -2,13 +2,13 @@
 'use client';
 
 import Link from 'next/link';
-import { Briefcase, Palette, Menu, X, User, BookOpen, Sparkles, Lightbulb, HomeIcon, Moon, Sun, Edit3, Eye, Trash2, RotateCcw, ChevronDown } from 'lucide-react';
+import { Briefcase, Palette, Menu, X, User, BookOpen, Sparkles, Lightbulb, HomeIcon, Moon, Sun, Edit3, Eye, RotateCcw, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePortfolioContext } from '@/contexts/portfolio-context';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useTheme as useNextTheme } from 'next-themes';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation'; // Import usePathname
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,17 +26,18 @@ export default function PortfolioHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
+  const pathname = usePathname(); // Get current pathname
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const navLinks = [
-    { href: '/portfolio', label: 'Home', icon: <HomeIcon size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors duration-200" /> },
-    { href: '/portfolio/experience', label: 'Experience', icon: <Briefcase size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors duration-200" /> },
-    { href: '/portfolio/education', label: 'Education', icon: <BookOpen size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors duration-200" /> },
-    { href: '/portfolio/projects', label: 'Projects', icon: <Lightbulb size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors duration-200" /> },
-    { href: '/portfolio/skills', label: 'Skills', icon: <Sparkles size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors duration-200" /> },
+    { href: '/portfolio', label: 'Home', icon: <HomeIcon size={18} /> },
+    { href: '/portfolio/experience', label: 'Experience', icon: <Briefcase size={18} /> },
+    { href: '/portfolio/education', label: 'Education', icon: <BookOpen size={18} /> },
+    { href: '/portfolio/projects', label: 'Projects', icon: <Lightbulb size={18} /> },
+    { href: '/portfolio/skills', label: 'Skills', icon: <Sparkles size={18} /> },
   ];
 
   const toggleUiTheme = () => {
@@ -64,6 +65,14 @@ export default function PortfolioHeader() {
     return <header className="bg-card/90 backdrop-blur-md shadow-md sticky top-0 z-50 border-b border-border/50 h-20" />;
   }
 
+  // Helper function to determine if a link is active
+  const isLinkActive = (href: string) => {
+    if (href === '/portfolio') {
+      return pathname === href; // Exact match for home
+    }
+    return pathname.startsWith(href); // StartsWith for other sections
+  };
+
   return (
     <header className="bg-card/90 backdrop-blur-md shadow-md sticky top-0 z-50 border-b border-border/50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -81,21 +90,32 @@ export default function PortfolioHeader() {
           </div>
 
           <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
-            {navLinks.map((link) => (
-              <Link key={link.href} href={link.href} passHref>
-                <Button variant="ghost" className="text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/5 group flex flex-col items-center h-auto py-2 px-3 transition-all duration-200 ease-in-out hover:shadow-sm active:scale-95">
-                  {link.icon}
-                  <span className="text-xs">{link.label}</span>
-                </Button>
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = isLinkActive(link.href);
+              return (
+                <Link key={link.href} href={link.href} passHref>
+                  <Button 
+                    variant="ghost" 
+                    className={cn(
+                      "text-sm font-medium group flex flex-col items-center h-auto py-2 px-3 transition-all duration-200 ease-in-out hover:shadow-sm active:scale-95",
+                      isActive ? "text-primary bg-primary/10 font-semibold" : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                    )}
+                  >
+                    <span className={cn("mb-1", isActive ? "text-primary" : "group-hover:text-primary transition-colors duration-200")}>
+                      {link.icon}
+                    </span>
+                    <span className="text-xs">{link.label}</span>
+                  </Button>
+                </Link>
+              );
+            })}
           </nav>
           
           <div className="flex items-center space-x-1 sm:space-x-2">
             {theme && availableThemes && availableThemes.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="hidden sm:inline-flex items-center space-x-2 bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-lg shadow-sm text-xs font-semibold active:scale-95 transition-all duration-200">
+                  <Button variant="outline" className="hidden sm:inline-flex items-center space-x-2 bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-lg shadow-sm text-xs font-semibold active:scale-95 transition-all duration-200" title="Switch Portfolio Theme">
                     <Palette size={16} className="text-primary/80"/>
                     <span>{theme.themeName}</span>
                     <ChevronDown size={16} className="opacity-70" />
@@ -132,7 +152,10 @@ export default function PortfolioHeader() {
               size="icon"
               onClick={toggleEditMode}
               aria-label={isEditMode ? "View Portfolio" : "Edit Portfolio"}
-              className="text-muted-foreground hover:text-primary active:scale-90 transition-all duration-200"
+              className={cn(
+                "text-muted-foreground hover:text-primary active:scale-90 transition-all duration-200",
+                isEditMode && "bg-primary/10 text-primary border-primary/50"
+                )}
               title={isEditMode ? "View Portfolio" : "Edit Portfolio"}
             >
               {isEditMode ? <Eye size={20} /> : <Edit3 size={20} />}
@@ -170,17 +193,24 @@ export default function PortfolioHeader() {
           )}
         >
           <nav className="flex flex-col space-y-1 pt-2">
-            {navLinks.map((link) => (
-              <Link key={link.href} href={link.href} passHref>
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start text-muted-foreground hover:text-primary py-3 text-base active:scale-95 transition-transform duration-150"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {link.icon} {link.label}
-                </Button>
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = isLinkActive(link.href);
+              return (
+                <Link key={link.href} href={link.href} passHref>
+                  <Button 
+                    variant="ghost" 
+                    className={cn(
+                      "w-full justify-start py-3 text-base active:scale-95 transition-transform duration-150 flex items-center",
+                      isActive ? "text-primary bg-primary/10 font-semibold" : "text-muted-foreground hover:text-primary"
+                    )}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <span className={cn("mr-2", isActive ? "text-primary" : "")}>{link.icon}</span> 
+                    {link.label}
+                  </Button>
+                </Link>
+              );
+            })}
              <Button
                 variant="ghost"
                 onClick={() => {
@@ -201,7 +231,7 @@ export default function PortfolioHeader() {
                         <Button
                             key={availTheme.themeName}
                             variant={theme.themeName === availTheme.themeName ? "secondary" : "ghost"}
-                            className="w-full justify-start text-muted-foreground hover:text-primary py-3 text-base active:scale-95 transition-transform duration-150"
+                            className="w-full justify-start text-muted-foreground hover:text-primary py-3 text-base active:scale-95 transition-transform duration-150 flex items-center"
                             onClick={() => handleThemeSelection(availTheme.themeName)}
                         >
                             <Palette size={18} className="mr-2" /> {availTheme.themeName}
@@ -215,3 +245,4 @@ export default function PortfolioHeader() {
     </header>
   );
 }
+
