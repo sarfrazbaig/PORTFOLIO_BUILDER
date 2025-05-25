@@ -4,7 +4,7 @@
 import type { ReactNode, Dispatch, SetStateAction } from 'react';
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ParseCvOutput } from '@/ai/flows/cv-parser';
-import type { CustomThemeOutput as GenkitCustomThemeOutput } from '@/ai/flows/ai-custom-theme-generator';
+import type { CustomThemeOutput as GenkitCustomThemeOutput, CustomThemeVariables } from '@/ai/flows/ai-custom-theme-generator';
 
 const CV_DATA_KEY = 'cvPortfolioData';
 const THEME_RECOMMENDATION_KEY = 'cvPortfolioTheme';
@@ -13,6 +13,15 @@ const AVAILABLE_THEMES_KEY = 'cvPortfolioAvailableThemes';
 export interface PortfolioTheme extends GenkitCustomThemeOutput {
   previewImageDataUri?: string;
 }
+
+// A more minimal version of the theme for storing the active theme
+interface ActiveThemeForStorage {
+  themeName: string;
+  description: string; // Keeping description as it might be used in portfolio header/footer
+  themeVariables: CustomThemeVariables;
+  previewImagePrompt: string; // Keep prompt for potential re-generation context if needed
+}
+
 
 interface PortfolioContextType {
   cvData: ParseCvOutput | null;
@@ -38,18 +47,17 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
+    setIsLoading(true);
     try {
       const storedCvDataString = localStorage.getItem(CV_DATA_KEY);
       if (storedCvDataString) {
         const parsedData = JSON.parse(storedCvDataString) as ParseCvOutput;
-        // Ensure selectedHeaderIcon defaults if not present
         if (parsedData.personalInformation && !parsedData.personalInformation.selectedHeaderIcon) {
           parsedData.personalInformation.selectedHeaderIcon = 'User';
         }
         setCvDataState(parsedData);
         updateProfessionState(parsedData);
       } else {
-         // If no CV data, ensure a default empty object with default icon for immediate use
         setCvDataState({
             personalInformation: { name: '', email: '', phone: '', linkedin: '', github: '', selectedHeaderIcon: 'User' },
             summary: '',
@@ -58,15 +66,35 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             skills: [],
             projects: []
         } as ParseCvOutput);
+        updateProfessionState(null);
       }
 
-      const storedTheme = localStorage.getItem(THEME_RECOMMENDATION_KEY);
-      if (storedTheme) {
-        setThemeState(JSON.parse(storedTheme) as PortfolioTheme);
+      const storedActiveThemeString = localStorage.getItem(THEME_RECOMMENDATION_KEY);
+      if (storedActiveThemeString) {
+        // The stored active theme is minimal, reconstruct to PortfolioTheme for state
+        const storedMinimalTheme = JSON.parse(storedActiveThemeString) as ActiveThemeForStorage;
+        const fullActiveTheme: PortfolioTheme = {
+          themeName: storedMinimalTheme.themeName,
+          description: storedMinimalTheme.description,
+          themeVariables: storedMinimalTheme.themeVariables,
+          previewImagePrompt: storedMinimalTheme.previewImagePrompt,
+          previewImageDataUri: undefined, // This was not stored
+        };
+        setThemeState(fullActiveTheme);
       }
-      const storedAvailableThemes = localStorage.getItem(AVAILABLE_THEMES_KEY);
-      if (storedAvailableThemes) {
-        setAvailableThemesState(JSON.parse(storedAvailableThemes) as PortfolioTheme[]);
+
+      const storedAvailableThemesString = localStorage.getItem(AVAILABLE_THEMES_KEY);
+      if (storedAvailableThemesString) {
+        // Themes stored by dashboard have 'imageDataUri', map to 'previewImageDataUri'
+        const rawAvailableThemes = JSON.parse(storedAvailableThemesString) as Array<GenkitCustomThemeOutput & { imageDataUri?: string; error?: string; isLoadingImage?:boolean /* dashboard state keys */ }>;
+        const mappedAvailableThemes: PortfolioTheme[] = rawAvailableThemes.map(rawTheme => ({
+          themeName: rawTheme.themeName,
+          description: rawTheme.description,
+          themeVariables: rawTheme.themeVariables,
+          previewImagePrompt: rawTheme.previewImagePrompt,
+          previewImageDataUri: rawTheme.imageDataUri, // Correct mapping
+        }));
+        setAvailableThemesState(mappedAvailableThemes);
       }
     } catch (e) {
       console.error("Error loading data from localStorage", e);
@@ -83,8 +111,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         setProfession("Professional");
         return;
     }
-    // Assuming customProfession is part of personalInformation now
-    const personalInfo = data.personalInformation as any; // Cast to access potential customProfession
+    const personalInfo = data.personalInformation as any; 
     if (personalInfo?.customProfession) {
         setProfession(personalInfo.customProfession);
     } else if (data.experience && data.experience.length > 0 && data.experience[0].title) {
@@ -108,7 +135,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const setCvData: Dispatch<SetStateAction<ParseCvOutput | null>> = (value) => {
     const newData = typeof value === 'function' ? value(cvData) : value;
     if (newData && newData.personalInformation && !newData.personalInformation.selectedHeaderIcon) {
-      newData.personalInformation.selectedHeaderIcon = 'User'; // Ensure default
+      newData.personalInformation.selectedHeaderIcon = 'User'; 
     }
     setCvDataState(newData);
     if (newData === null) {
@@ -121,11 +148,18 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
   const setTheme: Dispatch<SetStateAction<PortfolioTheme | null>> = (value) => {
     const newValue = typeof value === 'function' ? value(theme) : value;
-    setThemeState(newValue);
+    setThemeState(newValue); // Keep the full theme in React state
      if (newValue === null) {
       localStorage.removeItem(THEME_RECOMMENDATION_KEY);
     } else {
-      const { previewImageDataUri, ...themeToStore } = newValue;
+      // Store only essential parts for the active theme to avoid quota issues
+      const themeToStore: ActiveThemeForStorage = {
+        themeName: newValue.themeName,
+        description: newValue.description,
+        themeVariables: newValue.themeVariables,
+        previewImagePrompt: newValue.previewImagePrompt,
+        // DO NOT store previewImageDataUri here
+      };
       localStorage.setItem(THEME_RECOMMENDATION_KEY, JSON.stringify(themeToStore));
     }
   };
@@ -137,11 +171,10 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const updateCvField = (path: string, val: any) => {
     setCvDataState(prevData => {
       if (!prevData) return null;
-
       const keys = path.split('.');
-      const newData = JSON.parse(JSON.stringify(prevData)); // Deep copy
+      let currentLevel = JSON.parse(JSON.stringify(prevData)); // Deep copy
+      const originalData = currentLevel;
 
-      let currentLevel = newData;
       for (let i = 0; i < keys.length - 1; i++) {
         const key = keys[i];
         const nextKeyIsArrayIndex = !isNaN(parseInt(keys[i+1]));
@@ -153,29 +186,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       }
       
       const finalKey = keys[keys.length - 1];
-      const finalKeyIsArrayIndex = !isNaN(parseInt(finalKey));
-
-      if (finalKeyIsArrayIndex && Array.isArray(currentLevel)) {
-        const index = parseInt(finalKey);
-         if (index >= 0 && index < currentLevel.length) { // Check if index is valid
-            currentLevel[index] = val;
-        } else if (index === currentLevel.length && typeof val === 'object') { // Allow appending if it's an object/array
-             currentLevel.push(val);
-        } else {
-            // Handle array index out of bounds or mismatched type for append
-            console.warn(`updateCvField: Index ${index} out of bounds for array or invalid type for push at path ${path}`);
-        }
-      } else if (!Array.isArray(currentLevel) && typeof currentLevel === 'object' && currentLevel !== null) {
-        currentLevel[finalKey] = val;
-      } else {
-         console.warn(`updateCvField: Cannot set property '${finalKey}' on non-object or array at path ${path}`);
-      }
+      currentLevel[finalKey] = val;
       
-      if (path.startsWith('personalInformation.selectedHeaderIcon') && !newData.personalInformation.selectedHeaderIcon) {
-         newData.personalInformation.selectedHeaderIcon = 'User';
+      if (path.startsWith('personalInformation.selectedHeaderIcon') && !originalData.personalInformation.selectedHeaderIcon) {
+         originalData.personalInformation.selectedHeaderIcon = 'User';
       }
-
-      return newData;
+      return originalData;
     });
   };
   
