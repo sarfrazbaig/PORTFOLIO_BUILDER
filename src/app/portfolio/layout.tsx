@@ -44,7 +44,6 @@ function PortfolioLayoutContent({ children }: { children: ReactNode }) {
         '--secondary', '--secondary-foreground', '--accent', '--accent-foreground',
         '--card', '--card-foreground', '--border', '--input', '--ring',
         '--font-family-body', '--font-family-heading', '--base-font-size',
-        // Add any other dynamically set HSL color variables here
         '--muted', '--muted-foreground', '--popover', '--popover-foreground',
         '--destructive', '--destructive-foreground', '--radius',
         '--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5'
@@ -57,45 +56,40 @@ function PortfolioLayoutContent({ children }: { children: ReactNode }) {
     };
     
     let currentRootClassName = root.className;
-    const baseClassName = currentRootClassName.replace(/theme-\S+/g, '').trim();
+    const baseClassName = currentRootClassName.replace(/theme-\S+/g, '').trim().replace(/\s\s+/g, ' ');
 
 
     if (theme && theme.themeVariables) {
-      // Apply HSL color variables
       Object.entries(theme.themeVariables).forEach(([key, value]) => {
         const cssVarName = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
-        if (typeof value === 'string' && (key !== 'fontFamilyBody' && key !== 'fontFamilyHeading' && key !== 'baseFontSize' && key !== 'layoutStyle' && key !== 'cardStyle' && key !== 'spacingScale')) {
+        if (typeof value === 'string' && !['fontFamilyBody', 'fontFamilyHeading', 'baseFontSize', 'layoutStyle', 'cardStyle', 'spacingScale'].includes(key)) {
           setCssVariable(cssVarName, value);
         }
       });
 
-      // Apply font variables
       setCssVariable('--font-family-body', theme.themeVariables.fontFamilyBody);
       setCssVariable('--font-family-heading', theme.themeVariables.fontFamilyHeading);
       setCssVariable('--base-font-size', theme.themeVariables.baseFontSize);
       
-      // Apply data attributes for styles handled by CSS rules
       setAttributeIfChanged('data-layout-style', theme.themeVariables.layoutStyle);
       setAttributeIfChanged('data-card-style', theme.themeVariables.cardStyle);
       setAttributeIfChanged('data-spacing-scale', theme.themeVariables.spacingScale);
       
-      // Clear old theme class if new variables are applied
-      if (currentRootClassName !== baseClassName) {
-        root.className = baseClassName;
+      const newClassName = baseClassName; // No theme-class needed when variables are applied
+      if (root.className !== newClassName) {
+        root.className = newClassName;
       }
 
     } else if (theme && theme.themeName) {
-      // Fallback for older themes or basic AI recommendations
       clearDynamicStylesAndAttributes();
       const themeClass = `theme-${theme.themeName.toLowerCase().replace(/\s+/g, '-')}`;
-      const newClassName = `${baseClassName} ${themeClass}`.trim();
-      if (currentRootClassName !== newClassName) {
+      const newClassName = `${baseClassName} ${themeClass}`.trim().replace(/\s\s+/g, ' ');
+      if (root.className !== newClassName) {
         root.className = newClassName;
       }
     } else {
-       // No theme or theme variables, ensure no dynamic styles/attributes are lingering
       clearDynamicStylesAndAttributes();
-      if (currentRootClassName !== baseClassName) {
+      if (root.className !== baseClassName) {
         root.className = baseClassName;
       }
     }
@@ -137,13 +131,13 @@ function PortfolioLayoutContent({ children }: { children: ReactNode }) {
     );
   }
   
-  // Theme class is primarily for fallback now. Dynamic styles take precedence.
   const themeClass = (theme && !theme.themeVariables && theme.themeName) 
     ? `theme-${theme.themeName.toLowerCase().replace(/\s+/g, '-')}` 
     : '';
 
+  // Removed `bg-background` from this div; body already has it.
   return (
-    <div className={`flex flex-col min-h-screen bg-background text-foreground ${themeClass} antialiased`}>
+    <div className={`flex flex-col min-h-screen text-foreground ${themeClass} antialiased`}>
       <PortfolioHeader />
       <main className="flex-grow">
         {children}
