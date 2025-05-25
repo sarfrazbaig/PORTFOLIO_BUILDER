@@ -55,7 +55,7 @@ const CustomThemeOutputSchema = z.object({
 export type CustomThemeOutput = z.infer<typeof CustomThemeOutputSchema>;
 
 const GenerateCustomThemesOutputSchema = z.object({
-  themes: z.array(CustomThemeOutputSchema).min(2).max(3).describe("An array of 2 to 3 custom theme options."),
+  themes: z.array(CustomThemeOutputSchema).min(4).max(4).describe("An array of 4 custom theme options."),
 });
 export type GenerateCustomThemesOutput = z.infer<typeof GenerateCustomThemesOutputSchema>;
 
@@ -68,7 +68,7 @@ const prompt = ai.definePrompt({
   input: {schema: CustomThemePreferencesInputSchema},
   output: {schema: GenerateCustomThemesOutputSchema},
   prompt: `You are an expert UI/UX designer and typographer specializing in creating beautiful, accessible, and unique website themes.
-  Given the user's preferences, generate 2 or 3 HIGHLY distinct theme options. For each theme, provide:
+  Given the user's preferences, generate exactly 4 HIGHLY distinct theme options. For each theme, provide:
   1. A unique, descriptive \`themeName\`.
   2. A brief \`description\` explaining its aesthetic and how it relates to the user's preferences.
   3. A complete set of \`themeVariables\`:
@@ -116,7 +116,7 @@ const prompt = ai.definePrompt({
     "spacingScale": "spacious"
   }
   \`\`\`
-  Generate 2 or 3 HIGHLY distinct theme options.
+  Generate exactly 4 HIGHLY distinct theme options.
   `,
 });
 
@@ -128,60 +128,81 @@ const generateCustomThemesFlow = ai.defineFlow(
   },
   async (input) => {
     const {output} = await prompt(input);
-    if (!output || !output.themes || output.themes.length === 0) {
-        console.warn("AI failed to generate themes, using fallback.");
-        return {
-            themes: [
-                {
-                    themeName: "Default Fallback Light",
-                    description: "A default light theme as a fallback due to AI generation failure.",
-                    themeVariables: {
-                        background: "0 0% 100%", foreground: "0 0% 10%",
-                        primary: "210 100% 50%", primaryForeground: "0 0% 100%",
-                        secondary: "210 50% 90%", secondaryForeground: "210 100% 30%",
-                        accent: "30 100% 50%", accentForeground: "0 0% 0%",
-                        card: "0 0% 98%", cardForeground: "0 0% 10%",
-                        border: "0 0% 90%", input: "0 0% 90%", ring: "210 100% 50%",
-                        fontFamilyBody: "'Inter', sans-serif",
-                        fontFamilyHeading: "'Inter', sans-serif",
-                        baseFontSize: "16px",
-                        layoutStyle: "grid-standard",
-                        cardStyle: "shadow-soft",
-                        spacingScale: "regular"
-                    },
-                    previewImagePrompt: "light default abstract"
-                }
-            ]
+    if (!output || !output.themes || output.themes.length < 4) {
+        console.warn("AI failed to generate 4 themes, using fallback.");
+        // Generate 4 distinct fallback themes
+        const baseFallback = (index: number, mode: 'light' | 'dark' | 'system') => {
+          const actualMode = mode === 'system' ? 'light' : mode; // Default system to light for fallback
+          const isDark = actualMode === 'dark';
+          const fontFamiliesBody = ["'Inter', sans-serif", "'Roboto', sans-serif", "'Lato', sans-serif", "'Merriweather', serif"];
+          const fontFamiliesHeading = ["'Montserrat', sans-serif", "'Playfair Display', serif", "'Open Sans', sans-serif", "'Lora', serif"];
+          const baseFontSizes = ["15px", "16px", "17px", "16px"];
+          const layoutStyles = (['grid-standard', 'focus-hero', 'minimal-rows', 'list-compact'] as const);
+          const cardStyles = (['shadow-soft', 'flat-bordered', 'rounded-elevated', 'minimal-outline'] as const);
+          const spacingScales = (['compact', 'regular', 'spacious', 'regular'] as const);
+          
+          // Basic color variations for fallbacks
+          const primaryHues = [210, 30, 150, 260]; // Blue, Orange, Pink, Purple
+          const accentHues = [30, 210, 260, 150];
+
+          return {
+              themeName: `Fallback ${actualMode.charAt(0).toUpperCase() + actualMode.slice(1)} ${index + 1}`,
+              description: `A distinct fallback ${actualMode} theme (${index+1}/4) due to AI generation issues.`,
+              themeVariables: {
+                  background: isDark ? `${primaryHues[index]} 10% 10%` : `${primaryHues[index]} 20% 98%`,
+                  foreground: isDark ? `${primaryHues[index]} 10% 90%` : `${primaryHues[index]} 80% 10%`,
+                  primary: isDark ? `${primaryHues[index]} 80% 60%` : `${primaryHues[index]} 70% 50%`,
+                  primaryForeground: isDark ? `${primaryHues[index]} 80% 10%` : `0 0% 100%`,
+                  secondary: isDark ? `${primaryHues[index]} 15% 20%` : `${primaryHues[index]} 20% 90%`,
+                  secondaryForeground: isDark ? `${primaryHues[index]} 10% 80%` : `${primaryHues[index]} 70% 30%`,
+                  accent: isDark ? `${accentHues[index]} 70% 55%` : `${accentHues[index]} 80% 50%`,
+                  accentForeground: isDark ? `0 0% 0%` : `0 0% 100%`,
+                  card: isDark ? `${primaryHues[index]} 10% 15%` : `0 0% 100%`,
+                  cardForeground: isDark ? `${primaryHues[index]} 10% 90%` : `${primaryHues[index]} 80% 10%`,
+                  border: isDark ? `${primaryHues[index]} 10% 25%` : `${primaryHues[index]} 20% 88%`,
+                  input: isDark ? `${primaryHues[index]} 10% 25%` : `${primaryHues[index]} 20% 88%`,
+                  ring: isDark ? `${primaryHues[index]} 80% 60%` : `${primaryHues[index]} 70% 50%`,
+                  fontFamilyBody: fontFamiliesBody[index % fontFamiliesBody.length],
+                  fontFamilyHeading: fontFamiliesHeading[index % fontFamiliesHeading.length],
+                  baseFontSize: baseFontSizes[index % baseFontSizes.length],
+                  layoutStyle: layoutStyles[index % layoutStyles.length],
+                  cardStyle: cardStyles[index % cardStyles.length],
+                  spacingScale: spacingScales[index % spacingScales.length]
+              },
+              previewImagePrompt: `${actualMode} fallback abstract ${index + 1}`
+          };
         };
+        return { themes: Array.from({ length: 4 }, (_, i) => baseFallback(i, input.mode)) };
     }
     // Ensure all theme variables and previewImagePrompt are present with more robust fallbacks
      output.themes = output.themes.map((theme, index) => {
-      const defaultFontBody = ["'Inter', sans-serif", "'Roboto', sans-serif", "'Lato', sans-serif"][index % 3];
-      const defaultFontHeading = ["'Montserrat', sans-serif", "'Playfair Display', serif", "'Open Sans', sans-serif"][index % 3];
-      const defaultBaseSize = ["15px", "16px", "17px"][index % 3];
-      const defaultLayoutStyle = (['grid-standard', 'focus-hero', 'minimal-rows'] as const)[index % 3];
-      const defaultCardStyle = (['shadow-soft', 'flat-bordered', 'rounded-elevated'] as const)[index % 3];
-      const defaultSpacingScale = (['compact', 'regular', 'spacious'] as const)[index % 3];
+      const defaultFontBody = ["'Inter', sans-serif", "'Roboto', sans-serif", "'Lato', sans-serif", "'Merriweather', serif"][index % 4];
+      const defaultFontHeading = ["'Montserrat', sans-serif", "'Playfair Display', serif", "'Open Sans', sans-serif", "'Lora', serif"][index % 4];
+      const defaultBaseSize = ["15px", "16px", "17px", "16px"][index % 4];
+      const defaultLayoutStyle = (['grid-standard', 'focus-hero', 'minimal-rows', 'list-compact'] as const)[index % 4];
+      const defaultCardStyle = (['shadow-soft', 'flat-bordered', 'rounded-elevated', 'minimal-outline'] as const)[index % 4];
+      const defaultSpacingScale = (['compact', 'regular', 'spacious', 'regular'] as const)[index % 4];
+      const actualMode = input.mode === 'system' ? 'light' : input.mode;
 
 
       return {
         ...theme,
-        themeName: theme.themeName || `Generated Theme ${index + 1}`,
+        themeName: theme.themeName || `Generated Theme ${index + 1} (${actualMode})`,
         description: theme.description || "A custom generated theme by AI.",
-        previewImagePrompt: theme.previewImagePrompt || "abstract modern ui",
+        previewImagePrompt: theme.previewImagePrompt || `abstract ${actualMode} ui ${index + 1}`,
         themeVariables: {
-          background: theme.themeVariables?.background || (input.mode === 'dark' ? "0 0% 10%" : "0 0% 100%"),
-          foreground: theme.themeVariables?.foreground || (input.mode === 'dark' ? "0 0% 90%" : "0 0% 10%"),
+          background: theme.themeVariables?.background || (actualMode === 'dark' ? "0 0% 10%" : "0 0% 100%"),
+          foreground: theme.themeVariables?.foreground || (actualMode === 'dark' ? "0 0% 90%" : "0 0% 10%"),
           primary: theme.themeVariables?.primary || "240 5.9% 10%", // Default ShadCN Primary
           primaryForeground: theme.themeVariables?.primaryForeground || "0 0% 98%", // Default ShadCN Primary Foreground
           secondary: theme.themeVariables?.secondary || "240 4.8% 95.9%",
           secondaryForeground: theme.themeVariables?.secondaryForeground || "240 5.9% 10%",
           accent: theme.themeVariables?.accent || "174 100% 29%", // Teal from original PRD
           accentForeground: theme.themeVariables?.accentForeground || "0 0% 100%",
-          card: theme.themeVariables?.card || (input.mode === 'dark' ? "0 0% 15%" : "0 0% 98%"),
-          cardForeground: theme.themeVariables?.cardForeground || (input.mode === 'dark' ? "0 0% 90%" : "0 0% 10%"),
-          border: theme.themeVariables?.border || (input.mode === 'dark' ? "0 0% 20%" : "0 0% 90%"),
-          input: theme.themeVariables?.input || (input.mode === 'dark' ? "0 0% 20%" : "0 0% 90%"),
+          card: theme.themeVariables?.card || (actualMode === 'dark' ? "0 0% 15%" : "0 0% 98%"),
+          cardForeground: theme.themeVariables?.cardForeground || (actualMode === 'dark' ? "0 0% 90%" : "0 0% 10%"),
+          border: theme.themeVariables?.border || (actualMode === 'dark' ? "0 0% 20%" : "0 0% 90%"),
+          input: theme.themeVariables?.input || (actualMode === 'dark' ? "0 0% 20%" : "0 0% 90%"),
           ring: theme.themeVariables?.ring || "240 5.9% 10%",
           fontFamilyBody: theme.themeVariables?.fontFamilyBody || defaultFontBody,
           fontFamilyHeading: theme.themeVariables?.fontFamilyHeading || defaultFontHeading,
