@@ -8,12 +8,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Mail, Phone, Linkedin, Github, UserCircle, Sparkles, Upload, Loader2, ArrowDownCircle } from 'lucide-react';
 import AiHelperDialog from '@/components/ai-helper-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { ParseCvOutput as CvDataRootType } from '@/ai/flows/cv-parser'; // Renamed for clarity
+import type { ParseCvOutput as CvDataRootType } from '@/ai/flows/cv-parser';
 
 // Define specific type for personalInformation to include customProfession
 type OriginalPersonalInformation = CvDataRootType['personalInformation'];
@@ -65,14 +64,14 @@ const HeroSectionFocus: React.FC<HeroSectionProps> = ({
 }) => (
   <section
     className={cn(
-      "relative overflow-hidden bg-gradient-to-br from-background via-card to-background/80 border-b border-border/30",
+      "relative overflow-hidden bg-gradient-to-br from-background via-card/50 to-background/80 border-b border-border/30",
     )}
   >
     <div className="absolute inset-0 opacity-20">
       <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-primary/20 rounded-full filter blur-3xl animate-pulse-slow" />
       <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-accent/20 rounded-full filter blur-3xl animate-pulse-slower" />
     </div>
-    <div className="container mx-auto px-6 relative z-10">
+    <div className="container mx-auto px-6 relative z-10 py-10 md:py-16"> {/* Added padding here */}
       <div className="grid md:grid-cols-5 gap-8 md:gap-12 items-center">
         <div className="md:col-span-2 flex flex-col items-center md:items-start">
           <div className="relative group mb-6">
@@ -92,10 +91,10 @@ const HeroSectionFocus: React.FC<HeroSectionProps> = ({
             )}
             {isEditMode && (
               <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <Button onClick={() => avatarFileInputRef.current?.click()} size="icon" variant="outline" className="bg-background/80 hover:bg-background active:scale-90 transition-transform" title="Upload Avatar" disabled={isGeneratingAvatar}>
+                <Button onClick={() => avatarFileInputRef.current?.click()} size="icon" variant="outline" className="bg-background/80 hover:bg-background active:scale-95 transition-transform" title="Upload Avatar" disabled={isGeneratingAvatar}>
                   <Upload size={20} />
                 </Button>
-                <Button onClick={handleGenerateAvatar} size="icon" variant="outline" className="bg-background/80 hover:bg-background active:scale-90 transition-transform" title="Generate Avatar with AI" disabled={isGeneratingAvatar}>
+                <Button onClick={handleGenerateAvatar} size="icon" variant="outline" className="bg-background/80 hover:bg-background active:scale-95 transition-transform" title="Generate Avatar with AI" disabled={isGeneratingAvatar}>
                   {isGeneratingAvatar ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
                 </Button>
               </div>
@@ -130,7 +129,7 @@ const HeroSectionFocus: React.FC<HeroSectionProps> = ({
             </div>
           )}
         </div>
-        <div className="md:col-span-3 text-center md:text-left">
+        <div className="md:col-span-3 text-center md:text-left"> {/* Summary/About section starts here */}
           {isEditMode ? (
             <Input
               type="text"
@@ -159,7 +158,7 @@ const HeroSectionFocus: React.FC<HeroSectionProps> = ({
               </p>
             )
           )}
-          <div className="relative max-w-2xl mx-auto md:mx-0">
+          <div className="relative max-w-2xl mx-auto md:mx-0"> {/* Removed Card wrapper from summary */}
             {isEditMode ? (
               <Textarea
                 value={summary || ''}
@@ -215,7 +214,7 @@ const HeroSectionMinimal: React.FC<HeroSectionProps> = ({
 }) => (
   <section
     className={cn(
-      "relative overflow-hidden border-b border-border/30 text-center",
+      "relative overflow-hidden border-b border-border/30 text-center py-10 md:py-16", // Added padding here
     )}
   >
     <div className="absolute inset-0 opacity-10">
@@ -275,7 +274,7 @@ const HeroSectionMinimal: React.FC<HeroSectionProps> = ({
           </p>
         )
       )}
-      <div className="relative max-w-xl mx-auto">
+      <div className="relative max-w-xl mx-auto"> {/* Removed Card wrapper from summary */}
         {isEditMode ? (
           <Textarea
             value={summary || ''}
@@ -317,6 +316,13 @@ const HeroSectionMinimal: React.FC<HeroSectionProps> = ({
           )}
         </div>
       )}
+      <div className="mt-8 text-center md:text-left">
+            <a href="#contact-info">
+              <Button size="lg" variant="outline" className="group shadow-sm hover:shadow-primary/20 transition-all duration-300 hover:scale-105 active:scale-95">
+                Contact Me <ArrowDownCircle size={20} className="ml-2 group-hover:translate-y-0.5 transition-transform" />
+              </Button>
+            </a>
+          </div>
     </div>
   </section>
 );
@@ -453,9 +459,8 @@ export default function PortfolioHomePage() {
 
   return (
     <>
-      <div className={currentSpacing}> 
-        {renderHeroSection()}
-      </div>
+      {/* Hero section now handles its own top/bottom padding */}
+      {renderHeroSection()}
       
       <div className={cn("container mx-auto px-6", currentSpacing, contactSkillsLayoutClasses())}>
         {(personalInformation.email || personalInformation.phone || isEditMode) &&
@@ -466,8 +471,8 @@ export default function PortfolioHomePage() {
               </h2>
               <p className="text-lg text-muted-foreground mt-2">How to reach me.</p>
             </div>
-            <Card className={cn("themed-card shadow-xl border-l-4 border-primary/70 bg-card/80 backdrop-blur-sm", currentLayout === 'minimal-rows' ? 'mx-auto' : 'max-w-3xl mx-auto', 'hover:-translate-y-1 transition-transform duration-300')}>
-              <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 text-lg">
+            {/* Removed Card wrapper for contact info */}
+            <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 text-lg p-6 rounded-lg bg-card/30 backdrop-blur-sm shadow-lg border border-border/30", currentLayout === 'minimal-rows' ? 'mx-auto' : 'max-w-3xl mx-auto')}>
                 {isEditMode ? (
                   <div className="flex items-center space-x-3">
                     <Mail size={22} className="text-muted-foreground flex-shrink-0" />
@@ -529,8 +534,7 @@ export default function PortfolioHomePage() {
                     />
                   </div>
                 )}
-              </CardContent>
-            </Card>
+            </div>
           </section>
         }
 
@@ -542,8 +546,8 @@ export default function PortfolioHomePage() {
               </h2>
               <p className="text-lg text-muted-foreground mt-2">Key technologies and abilities I bring to the table.</p>
             </div>
-            <Card className={cn("themed-card shadow-xl border-l-4 border-accent/70 bg-card/80 backdrop-blur-sm p-6 md:p-8", currentLayout === 'minimal-rows' ? 'mx-auto' : '', 'hover:-translate-y-1 transition-transform duration-300')}>
-              <CardContent className="pt-2">
+             {/* Removed Card wrapper for skills */}
+            <div className={cn("p-6 md:p-8 rounded-lg bg-card/30 backdrop-blur-sm shadow-lg border border-border/30", currentLayout === 'minimal-rows' ? 'mx-auto' : '')}>
                 <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-5">
                   {skills.map((skill, index) => (
                     <span
@@ -560,8 +564,7 @@ export default function PortfolioHomePage() {
                   ))}
                 </div>
                 {isEditMode && <p className="text-center text-sm text-muted-foreground mt-6 italic">(Skills can be added, removed, or reordered on the dedicated Skills page)</p>}
-              </CardContent>
-            </Card>
+            </div>
           </section>
         )}
         {!skills || skills.length === 0 && isEditMode && (
@@ -603,3 +606,4 @@ export default function PortfolioHomePage() {
     </>
   );
 }
+
