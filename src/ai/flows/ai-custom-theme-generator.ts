@@ -68,7 +68,7 @@ const prompt = ai.definePrompt({
   input: {schema: CustomThemePreferencesInputSchema},
   output: {schema: GenerateCustomThemesOutputSchema},
   prompt: `You are an expert UI/UX designer and typographer specializing in creating beautiful, accessible, and unique website themes.
-  Given the user's preferences, generate 2-3 distinct theme options. For each theme, provide:
+  Given the user's preferences, generate 2 or 3 HIGHLY distinct theme options. For each theme, provide:
   1. A unique, descriptive \`themeName\`.
   2. A brief \`description\` explaining its aesthetic and how it relates to the user's preferences.
   3. A complete set of \`themeVariables\`:
@@ -92,7 +92,8 @@ const prompt = ai.definePrompt({
   {{#if currentProfession}}- Profession Context: {{{currentProfession}}}{{/if}}
 
   Ensure HSL values are strings like "H S% L%".
-  Prioritize themes that are visually distinct from each other. This distinctiveness should apply not just to color schemes, but also to font pairings, base font sizes, and the suggested layout/card/spacing styles. For example, one theme might be a dark, tech-focused theme with sans-serif fonts and standard grid layout, while another could be a light, artistic theme with serif fonts, a larger base font size, and a minimal-rows layout.
+  **Crucially, prioritize themes that are visually distinct from each other.** This distinctiveness must apply not just to color schemes, but also significantly to font pairings, base font sizes, and the suggested layout/card/spacing styles.
+  For example, if one theme is dark with 'Inter' (sans-serif), 16px base font, and 'grid-standard' layout, another might be light with 'Lora' (serif), 18px base font, and a 'minimal-rows' layout, and a third could use a monochromatic color scheme with 'Montserrat' and 'spacious' spacing. The goal is noticeable variety in the generated set.
   If mode is 'dark', ensure background colors are dark and foregrounds are light.
   If mode is 'light', ensure background colors are light and foregrounds are dark.
   The font families should be chosen carefully for readability and aesthetic fit with the vibe. Headings and body fonts should complement each other.
@@ -107,15 +108,15 @@ const prompt = ai.definePrompt({
     "accent": "340 80% 60%", "accentForeground": "0 0% 100%",
     "card": "220 15% 15%", "cardForeground": "220 10% 90%",
     "border": "220 15% 25%", "input": "220 15% 25%", "ring": "200 80% 55%",
-    "fontFamilyBody": "'Inter', sans-serif",
-    "fontFamilyHeading": "'Montserrat', sans-serif",
-    "baseFontSize": "16px",
-    "layoutStyle": "grid-standard",
-    "cardStyle": "shadow-soft",
-    "spacingScale": "regular"
+    "fontFamilyBody": "'Roboto', sans-serif",
+    "fontFamilyHeading": "'Playfair Display', serif",
+    "baseFontSize": "17px",
+    "layoutStyle": "focus-hero",
+    "cardStyle": "rounded-elevated",
+    "spacingScale": "spacious"
   }
   \`\`\`
-  Generate 2 or 3 distinct theme options.
+  Generate 2 or 3 HIGHLY distinct theme options.
   `,
 });
 
@@ -128,12 +129,12 @@ const generateCustomThemesFlow = ai.defineFlow(
   async (input) => {
     const {output} = await prompt(input);
     if (!output || !output.themes || output.themes.length === 0) {
-        // Fallback if AI fails to generate themes
+        console.warn("AI failed to generate themes, using fallback.");
         return {
             themes: [
                 {
                     themeName: "Default Fallback Light",
-                    description: "A default light theme as a fallback.",
+                    description: "A default light theme as a fallback due to AI generation failure.",
                     themeVariables: {
                         background: "0 0% 100%", foreground: "0 0% 10%",
                         primary: "210 100% 50%", primaryForeground: "0 0% 100%",
@@ -148,41 +149,49 @@ const generateCustomThemesFlow = ai.defineFlow(
                         cardStyle: "shadow-soft",
                         spacingScale: "regular"
                     },
-                    previewImagePrompt: "light default"
+                    previewImagePrompt: "light default abstract"
                 }
             ]
         };
     }
-    // Ensure all theme variables and previewImagePrompt are present
-     output.themes = output.themes.map(theme => ({
-      ...theme,
-      themeName: theme.themeName || "Unnamed Theme",
-      description: theme.description || "A custom generated theme.",
-      previewImagePrompt: theme.previewImagePrompt || "abstract modern ui", // Ensure this has a fallback
-      themeVariables: {
-        background: theme.themeVariables.background || "0 0% 100%",
-        foreground: theme.themeVariables.foreground || "0 0% 10%",
-        primary: theme.themeVariables.primary || "240 5.9% 10%",
-        primaryForeground: theme.themeVariables.primaryForeground || "0 0% 98%",
-        secondary: theme.themeVariables.secondary || "240 4.8% 95.9%",
-        secondaryForeground: theme.themeVariables.secondaryForeground || "240 5.9% 10%",
-        accent: theme.themeVariables.accent || "240 3.7% 15.9%",
-        accentForeground: theme.themeVariables.accentForeground || "0 0% 98%",
-        card: theme.themeVariables.card || "0 0% 100%",
-        cardForeground: theme.themeVariables.cardForeground || "240 5.9% 10%",
-        border: theme.themeVariables.border || "240 5.9% 90%",
-        input: theme.themeVariables.input || "240 5.9% 90%",
-        ring: theme.themeVariables.ring || "240 5.9% 10%",
-        fontFamilyBody: theme.themeVariables.fontFamilyBody || "'Inter', sans-serif",
-        fontFamilyHeading: theme.themeVariables.fontFamilyHeading || "'Inter', sans-serif",
-        baseFontSize: theme.themeVariables.baseFontSize || "16px",
-        layoutStyle: theme.themeVariables.layoutStyle || "grid-standard",
-        cardStyle: theme.themeVariables.cardStyle || "shadow-soft",
-        spacingScale: theme.themeVariables.spacingScale || "regular",
-      }
-    }));
+    // Ensure all theme variables and previewImagePrompt are present with more robust fallbacks
+     output.themes = output.themes.map((theme, index) => {
+      const defaultFontBody = ["'Inter', sans-serif", "'Roboto', sans-serif", "'Lato', sans-serif"][index % 3];
+      const defaultFontHeading = ["'Montserrat', sans-serif", "'Playfair Display', serif", "'Open Sans', sans-serif"][index % 3];
+      const defaultBaseSize = ["15px", "16px", "17px"][index % 3];
+      const defaultLayoutStyle = (['grid-standard', 'focus-hero', 'minimal-rows'] as const)[index % 3];
+      const defaultCardStyle = (['shadow-soft', 'flat-bordered', 'rounded-elevated'] as const)[index % 3];
+      const defaultSpacingScale = (['compact', 'regular', 'spacious'] as const)[index % 3];
+
+
+      return {
+        ...theme,
+        themeName: theme.themeName || `Generated Theme ${index + 1}`,
+        description: theme.description || "A custom generated theme by AI.",
+        previewImagePrompt: theme.previewImagePrompt || "abstract modern ui",
+        themeVariables: {
+          background: theme.themeVariables?.background || (input.mode === 'dark' ? "0 0% 10%" : "0 0% 100%"),
+          foreground: theme.themeVariables?.foreground || (input.mode === 'dark' ? "0 0% 90%" : "0 0% 10%"),
+          primary: theme.themeVariables?.primary || "240 5.9% 10%", // Default ShadCN Primary
+          primaryForeground: theme.themeVariables?.primaryForeground || "0 0% 98%", // Default ShadCN Primary Foreground
+          secondary: theme.themeVariables?.secondary || "240 4.8% 95.9%",
+          secondaryForeground: theme.themeVariables?.secondaryForeground || "240 5.9% 10%",
+          accent: theme.themeVariables?.accent || "174 100% 29%", // Teal from original PRD
+          accentForeground: theme.themeVariables?.accentForeground || "0 0% 100%",
+          card: theme.themeVariables?.card || (input.mode === 'dark' ? "0 0% 15%" : "0 0% 98%"),
+          cardForeground: theme.themeVariables?.cardForeground || (input.mode === 'dark' ? "0 0% 90%" : "0 0% 10%"),
+          border: theme.themeVariables?.border || (input.mode === 'dark' ? "0 0% 20%" : "0 0% 90%"),
+          input: theme.themeVariables?.input || (input.mode === 'dark' ? "0 0% 20%" : "0 0% 90%"),
+          ring: theme.themeVariables?.ring || "240 5.9% 10%",
+          fontFamilyBody: theme.themeVariables?.fontFamilyBody || defaultFontBody,
+          fontFamilyHeading: theme.themeVariables?.fontFamilyHeading || defaultFontHeading,
+          baseFontSize: theme.themeVariables?.baseFontSize || defaultBaseSize,
+          layoutStyle: theme.themeVariables?.layoutStyle || defaultLayoutStyle,
+          cardStyle: theme.themeVariables?.cardStyle || defaultCardStyle,
+          spacingScale: theme.themeVariables?.spacingScale || defaultSpacingScale,
+        }
+      };
+    });
     return output;
   }
 );
-
-    
