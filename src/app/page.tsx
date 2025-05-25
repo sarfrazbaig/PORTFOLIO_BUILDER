@@ -1,6 +1,7 @@
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Briefcase, UploadCloud, Zap } from 'lucide-react';
+import { Briefcase, UploadCloud, Zap, Palette, Edit3, Rocket } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -22,10 +23,10 @@ export default function HomePage() {
             <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:gap-16 items-center">
               <div className="space-y-4">
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none text-primary">
-                  Build Your Professional Portfolio in Minutes
+                  Craft Your Unique AI-Powered Portfolio in Minutes
                 </h1>
                 <p className="max-w-[600px] text-muted-foreground md:text-xl">
-                  Upload your CV, let our AI do the heavy lifting, and choose from stunning themes to showcase your skills and experience.
+                  Upload your CV, let our AI structure your content, generate personalized themes with custom colors, fonts, and layouts, then edit and enhance your site with AI assistance.
                 </p>
                 <Link href="/dashboard">
                   <Button size="lg" className="mt-4">
@@ -36,11 +37,11 @@ export default function HomePage() {
               </div>
               <Image
                 src="https://placehold.co/600x400.png"
-                alt="Portfolio Preview"
+                alt="Dynamic Portfolio Illustration"
                 width={600}
                 height={400}
                 className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
-                data-ai-hint="portfolio website"
+                data-ai-hint="career growth portfolio"
               />
             </div>
           </div>
@@ -52,7 +53,7 @@ export default function HomePage() {
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">How It Works</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  Three simple steps to your professional online presence.
+                  Transform your CV into a stunning, unique portfolio with our intelligent platform.
                 </p>
               </div>
             </div>
@@ -62,37 +63,37 @@ export default function HomePage() {
                   <div className="flex items-center justify-center bg-primary rounded-md p-3 w-12 h-12 mb-4">
                     <UploadCloud className="h-6 w-6 text-primary-foreground" />
                   </div>
-                  <CardTitle>1. Upload CV</CardTitle>
+                  <CardTitle>1. Upload & AI Parse</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <CardDescription>
-                    Easily upload your existing CV in various formats. Our system will securely process your information.
+                    Easily upload your CV. Our AI intelligently extracts and structures your experience, education, projects, and skills.
                   </CardDescription>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-center bg-primary rounded-md p-3 w-12 h-12 mb-4">
-                    <Zap className="h-6 w-6 text-primary-foreground" />
+                    <Palette className="h-6 w-6 text-primary-foreground" />
                   </div>
-                  <CardTitle>2. AI Magic</CardTitle>
+                  <CardTitle>2. AI Theme Crafting</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <CardDescription>
-                    Our AI parses your CV, structures the content, and recommends the best themes for your profession.
+                    Specify your style preferences, and our AI generates multiple unique themes with custom colors, fonts, and layouts.
                   </CardDescription>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-center bg-primary rounded-md p-3 w-12 h-12 mb-4">
-                    <Briefcase className="h-6 w-6 text-primary-foreground" />
+                    <Edit3 className="h-6 w-6 text-primary-foreground" />
                   </div>
-                  <CardTitle>3. Launch Portfolio</CardTitle>
+                  <CardTitle>3. Customize & Launch</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <CardDescription>
-                    Preview, customize, and publish your professional portfolio to a unique URL. Share it with the world!
+                    Live-edit your content, use AI to rewrite sections, upload or generate images, switch themes, and publish your unique portfolio.
                   </CardDescription>
                 </CardContent>
               </Card>
