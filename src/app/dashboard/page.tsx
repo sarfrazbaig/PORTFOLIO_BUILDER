@@ -6,7 +6,7 @@ import type { ParseCvOutput } from '@/ai/flows/cv-parser';
 import type { RecommendThemeOutput } from '@/ai/flows/ai-theme-recommendation';
 import { generateCustomThemes, type CustomThemePreferencesInput, type CustomThemeOutput } from '@/ai/flows/ai-custom-theme-generator';
 import { generateImage, type GenerateImageInput, type GenerateImageOutput } from '@/ai/flows/generate-image-flow';
-import type { PortfolioTheme } from '@/contexts/portfolio-context';
+import { usePortfolioContext, type PortfolioTheme } from '@/contexts/portfolio-context'; // Import usePortfolioContext
 import CvUploadForm from '@/components/cv-upload-form';
 import ParsedCvDisplay from '@/components/parsed-cv-display';
 import ThemeRecommendationDisplay from '@/components/theme-recommendation-display';
@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 
 const CV_DATA_KEY = 'cvPortfolioData';
-const THEME_RECOMMENDATION_KEY = 'cvPortfolioTheme';
+// const THEME_RECOMMENDATION_KEY = 'cvPortfolioTheme'; // Active theme managed by context
 const AVAILABLE_THEMES_KEY = 'cvPortfolioAvailableThemes'; 
 
 interface CustomThemeWithImageState extends CustomThemeOutput {
@@ -72,6 +72,7 @@ export default function DashboardPage() {
   const [selectedThemeNameForPreview, setSelectedThemeNameForPreview] = useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
+  const { setTheme: setActiveTheme } = usePortfolioContext(); // Get setTheme from context
 
   useEffect(() => {
     const storedCvData = localStorage.getItem(CV_DATA_KEY);
@@ -79,15 +80,17 @@ export default function DashboardPage() {
       try { setParsedCvData(JSON.parse(storedCvData)); }
       catch (e) { console.error("Failed to parse CV data", e); localStorage.removeItem(CV_DATA_KEY); }
     }
-    const storedTheme = localStorage.getItem(THEME_RECOMMENDATION_KEY);
-    if (storedTheme) {
-      try {
-        const theme = JSON.parse(storedTheme) as PortfolioTheme;
-        if (!theme.themeVariables) { 
-            setInitialThemeRecommendation({themeName: theme.themeName, reason: theme.reason || ''});
-        }
-      } catch (e) { console.error("Failed to parse theme recommendation", e); localStorage.removeItem(THEME_RECOMMENDATION_KEY); }
+    // Initial theme recommendation (basic) is loaded by context, but we can still show it here if no custom themes exist.
+    const activeThemeFromContext = localStorage.getItem('cvPortfolioTheme'); // Readonly, context handles it
+    if (activeThemeFromContext) {
+        try {
+            const theme = JSON.parse(activeThemeFromContext) as PortfolioTheme;
+            if (!theme.themeVariables && !generatedCustomThemesWithImages.length) { // Only if it's a basic theme and no custom ones are loaded
+                setInitialThemeRecommendation({themeName: theme.themeName, reason: theme.description || ''});
+            }
+        } catch(e) { console.error("Failed to parse active theme for initial display", e); }
     }
+
     const storedAvailableThemes = localStorage.getItem(AVAILABLE_THEMES_KEY);
     if (storedAvailableThemes) {
         try {
@@ -101,7 +104,7 @@ export default function DashboardPage() {
             localStorage.removeItem(AVAILABLE_THEMES_KEY);
         }
     }
-  }, [selectedThemeNameForPreview]);
+  }, [selectedThemeNameForPreview]); // Removed generatedCustomThemesWithImages to avoid loop if image gen updates it
 
   const handleCvParsed = (data: ParseCvOutput) => {
     setParsedCvData(data);
@@ -110,8 +113,14 @@ export default function DashboardPage() {
 
   const handleInitialThemeRecommended = (data: RecommendThemeOutput) => {
     setInitialThemeRecommendation(data);
-    const basicTheme: PortfolioTheme = { themeName: data.themeName, reason: data.reason, themeVariables: {} as any, previewImagePrompt: '' }; // Ensure type compatibility
-    localStorage.setItem(THEME_RECOMMENDATION_KEY, JSON.stringify(basicTheme));
+    const basicTheme: PortfolioTheme = { 
+        themeName: data.themeName, 
+        description: data.reason, 
+        themeVariables: {} as any, // Cast as any to satisfy type, but it's empty
+        previewImagePrompt: '' 
+    };
+    // Set this basic theme as active using the context
+    setActiveTheme(basicTheme); 
   };
 
   const handleLoadingChange = (loading: boolean) => {
@@ -142,10 +151,14 @@ export default function DashboardPage() {
         toast({ title: "Custom Themes Generated!", description: "Now generating preview images..." });
         const themesWithLoadingState: CustomThemeWithImageState[] = result.themes.map(theme => ({ ...theme, isLoadingImage: true, imageDataUri: undefined, error: undefined }));
         
-        localStorage.setItem(AVAILABLE_THEMES_KEY, JSON.stringify(themesWithLoadingState.map(t => ({...t, isLoadingImage: undefined, error: undefined})))); 
+        // Save all generated themes (without images yet) to localStorage
+        localStorage.setItem(AVAILABLE_THEMES_KEY, JSON.stringify(themesWithLoadingState.map(t => ({...t, isLoadingImage: undefined, error: undefined, imageDataUri: undefined})))); 
         
         setGeneratedCustomThemesWithImages(themesWithLoadingState);
-        setSelectedThemeNameForPreview(themesWithLoadingState[0].themeName); 
+        if (themesWithLoadingState.length > 0) {
+            setSelectedThemeNameForPreview(themesWithLoadingState[0].themeName); 
+        }
+
 
         themesWithLoadingState.forEach(async (theme, index) => {
           let finalPrompt = theme.previewImagePrompt || "abstract theme representation";
@@ -165,8 +178,10 @@ export default function DashboardPage() {
                         isLoadingImage: false,
                         error: imageResult.imageDataUri ? undefined : imageResult.error || "Failed to generate image.",
                     };
+                     // Update localStorage with image data for this theme
+                    const themesToSave = newThemes.map(t => ({...t, isLoadingImage: undefined})); // remove loading state for storage
+                    localStorage.setItem(AVAILABLE_THEMES_KEY, JSON.stringify(themesToSave));
                 }
-                localStorage.setItem(AVAILABLE_THEMES_KEY, JSON.stringify(newThemes.map(t => ({...t, isLoadingImage: undefined, error: undefined}))));
                 return newThemes;
               });
               if (imageResult.error && !imageResult.imageDataUri) {
@@ -179,8 +194,10 @@ export default function DashboardPage() {
                 const newThemes = [...prevThemes];
                  if (newThemes[index]) {
                     newThemes[index] = { ...newThemes[index], isLoadingImage: false, error: imgError.message || "Image generation process failed." };
+                     // Update localStorage even on error for this theme
+                    const themesToSave = newThemes.map(t => ({...t, isLoadingImage: undefined }));
+                    localStorage.setItem(AVAILABLE_THEMES_KEY, JSON.stringify(themesToSave));
                 }
-                localStorage.setItem(AVAILABLE_THEMES_KEY, JSON.stringify(newThemes.map(t => ({...t, isLoadingImage: undefined, error: undefined}))));
                 return newThemes;
               });
             }
@@ -189,8 +206,10 @@ export default function DashboardPage() {
               const newThemes = [...prevThemes];
               if (newThemes[index]) {
                 newThemes[index] = { ...newThemes[index], isLoadingImage: false, error: "No valid prompt for image." };
+                 // Update localStorage for this theme
+                const themesToSave = newThemes.map(t => ({...t, isLoadingImage: undefined }));
+                localStorage.setItem(AVAILABLE_THEMES_KEY, JSON.stringify(themesToSave));
               }
-              localStorage.setItem(AVAILABLE_THEMES_KEY, JSON.stringify(newThemes.map(t => ({...t, isLoadingImage: undefined, error: undefined}))));
               return newThemes;
             });
             toast({ title: `Image Skipped: ${theme.themeName}`, description: "No preview image prompt provided.", variant: "default" });
@@ -214,14 +233,18 @@ export default function DashboardPage() {
         toast({title: "No theme selected", description: "Please select a theme from the dropdown.", variant: "destructive"});
         return;
     }
-    const portfolioThemeToSave: PortfolioTheme = {
+    // Construct the theme object for the context.
+    // The context's setTheme will handle stripping previewImageDataUri for localStorage.
+    const portfolioThemeToSetActive: PortfolioTheme = {
       themeName: themeToApply.themeName,
       description: themeToApply.description,
       themeVariables: themeToApply.themeVariables,
       previewImagePrompt: themeToApply.previewImagePrompt,
-      previewImageDataUri: themeToApply.imageDataUri 
+      previewImageDataUri: themeToApply.imageDataUri // Pass it to the context
     };
-    localStorage.setItem(THEME_RECOMMENDATION_KEY, JSON.stringify(portfolioThemeToSave));
+    
+    setActiveTheme(portfolioThemeToSetActive); // Use context's setTheme
+
     toast({ title: "Theme Selected!", description: `"${themeToApply.themeName}" applied. Redirecting to portfolio...` });
     router.push('/portfolio');
   };
@@ -233,7 +256,8 @@ export default function DashboardPage() {
       setGeneratedCustomThemesWithImages([]);
       setSelectedThemeNameForPreview(null);
       localStorage.removeItem(CV_DATA_KEY);
-      localStorage.removeItem(THEME_RECOMMENDATION_KEY);
+      // Also clear active theme via context, which handles localStorage
+      setActiveTheme(null); 
       localStorage.removeItem(AVAILABLE_THEMES_KEY);
       toast({ title: "Data Cleared", description: "Ready for a new CV upload." });
     }
@@ -332,7 +356,7 @@ export default function DashboardPage() {
                 <ShadInput 
                     id="industryInspiration" 
                     placeholder="e.g., Tech startups, art galleries, fashion magazines" 
-                    value={customThemePreferences.industryInspiration}
+                    value={customThemePreferences.industryInspiration || ''}
                     onChange={(e) => handlePreferenceChange('industryInspiration', e.target.value)}
                     className="mt-2"
                 />
