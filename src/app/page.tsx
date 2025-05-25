@@ -100,7 +100,7 @@ export default function HomePage() {
         <div className="container flex h-14 items-center">
           <Link href="/" className="flex items-center space-x-2">
             <Briefcase className="h-6 w-6 text-primary transition-colors duration-500" />
-            <span className="font-bold text-lg">CV Portfolio Pro</span>
+            <span className="font-bold text-lg">FolioCraft AI</span>
           </Link>
         </div>
       </header>
@@ -125,7 +125,7 @@ export default function HomePage() {
               </div>
               <Image
                 src="https://placehold.co/600x400.png"
-                alt="Hero image illustrating AI-powered portfolio creation, custom themes, and career growth"
+                alt="Hero image illustrating AI-powered portfolio creation, dynamic themes, and modern career showcasing"
                 width={600}
                 height={400}
                 className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
@@ -191,7 +191,7 @@ export default function HomePage() {
       </main>
 
       <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-        <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} CV Portfolio Pro. All rights reserved.</p>
+        <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} FolioCraft AI. All rights reserved.</p>
       </footer>
     </div>
   );

@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Briefcase, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,9 @@ export default function SiteHeader() {
   }, []);
 
   if (!mounted) {
-    return null; 
+    // Return a placeholder or null to avoid layout shift during hydration
+    // For a sticky header, it's important to maintain its height
+    return <header className="sticky top-0 z-50 w-full border-b bg-background/95 h-16" />; 
   }
 
   return (
@@ -21,7 +24,7 @@ export default function SiteHeader() {
       <div className="container flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center space-x-2">
           <Briefcase className="h-8 w-8 text-primary" />
-          <span className="font-bold text-xl tracking-tight">CV Portfolio Pro</span>
+          <span className="font-bold text-xl tracking-tight">FolioCraft AI</span>
         </Link>
         <nav className="flex items-center space-x-4">
           {/* Add navigation links here if needed in the future */}

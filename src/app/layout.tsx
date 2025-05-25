@@ -53,7 +53,7 @@ const playfairDisplay = Playfair_Display({
 
 
 export const metadata: Metadata = {
-  title: 'CV Portfolio Pro',
+  title: 'FolioCraft AI',
   description: 'Build your professional portfolio in minutes with AI.',
 };
 
@@ -78,5 +78,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-    

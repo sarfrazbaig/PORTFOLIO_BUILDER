@@ -19,7 +19,7 @@ export default function PortfolioFooter() {
           </Button>
         </Link>
         <p className="text-md text-muted-foreground">
-          &copy; {new Date().getFullYear()} {cvData?.personalInformation?.name || 'Your Name'}. Portfolio crafted with CV Portfolio Pro.
+          &copy; {new Date().getFullYear()} {cvData?.personalInformation?.name || 'Your Name'}. Portfolio crafted with FolioCraft AI.
         </p>
         {theme && (
           <p className="text-xs text-muted-foreground/70 mt-2">

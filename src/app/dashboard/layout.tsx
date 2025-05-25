@@ -15,7 +15,7 @@ export default function DashboardLayout({
         <main className="flex-1">{children}</main>
         <footer className="py-6 px-4 md:px-6 border-t">
           <p className="text-xs text-center text-muted-foreground">
-            &copy; {new Date().getFullYear()} CV Portfolio Pro. All rights reserved.
+            &copy; {new Date().getFullYear()} FolioCraft AI. All rights reserved.
           </p>
         </footer>
       </div>
