@@ -1,4 +1,5 @@
-// 'use server';
+
+'use server';
 /**
  * @fileOverview An AI agent that rewrites, reorganizes, or adds content to a specific section of the portfolio.
  *
@@ -6,8 +7,6 @@
  * - RewriteContentInput - The input type for the rewriteContent function.
  * - RewriteContentOutput - The return type for the rewriteContent function.
  */
-
-'use server';
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
