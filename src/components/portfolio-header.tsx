@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Palette, Menu, X, Edit3, Eye, RotateCcw, ChevronDown, Pencil } from 'lucide-react';
+import { Palette, Menu, X, Edit3, Eye, RotateCcw, ChevronDown, Pencil, Moon, Sun } from 'lucide-react'; // Added Moon, Sun
 import { Button } from '@/components/ui/button';
 import { usePortfolioContext } from '@/contexts/portfolio-context';
 import { useState, useEffect } from 'react';
@@ -19,9 +19,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { navLinks } from '@/lib/navlinks'; // Assuming navlinks are moved here
+import { navLinks } from '@/lib/navlinks';
 import { renderIcon } from '@/lib/icons';
-import HeaderIconSelectorDialog from './header-icon-selector-dialog'; // New Dialog
+import HeaderIconSelectorDialog from './header-icon-selector-dialog';
 
 export default function PortfolioHeader() {
   const {
@@ -78,7 +78,9 @@ export default function PortfolioHeader() {
   }
 
   const isLinkActive = (href: string) => {
-    if (href === '/portfolio') return pathname === href;
+    if (href === '/portfolio') return pathname === href; // Exact match for home
+    // For other main sections, check if current path starts with the link's href
+    // This handles sub-pages like /portfolio/projects/[projectName]
     return pathname.startsWith(href);
   };
 
