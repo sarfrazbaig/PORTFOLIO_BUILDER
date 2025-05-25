@@ -95,6 +95,8 @@ body {
   font-size: var(--base-font-size);
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
+  position: relative; /* For pseudo-elements positioning */
+  overflow-x: hidden; /* Prevent horizontal scroll from blurred shapes */
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -191,6 +193,72 @@ h1, h2, h3, h4, h5, h6 {
   body {
     @apply bg-background text-foreground; /* These will be overridden by dynamic HSLs */
   }
+}
+
+/* Subtle Animated Background Elements */
+body::before,
+body::after {
+  content: '';
+  position: fixed; /* Changed from absolute to fixed */
+  border-radius: 50%;
+  z-index: -10; /* Ensure it's well behind all content */
+  opacity: 0.1; /* Default subtle opacity */
+  filter: blur(120px); /* Increased blur for softness */
+  transition: background-color 0.7s ease-in-out; /* Smooth color transition with theme */
+  pointer-events: none; /* Make sure they don't interfere with interactions */
+}
+
+body::before {
+  width: 50vw; /* Adjusted size */
+  height: 50vw;
+  min-width: 350px;
+  min-height: 350px;
+  background-color: hsl(var(--primary) / 0.7); /* Use primary color with some transparency */
+  top: -25vw; /* Adjusted positioning */
+  left: -25vw;
+  animation: pulse-primary-bg 20s infinite alternate ease-in-out;
+}
+
+body::after {
+  width: 45vw; /* Adjusted size */
+  height: 45vw;
+  min-width: 300px;
+  min-height: 300px;
+  background-color: hsl(var(--accent) / 0.7); /* Use accent color with some transparency */
+  bottom: -20vw; /* Adjusted positioning */
+  right: -20vw;
+  animation: pulse-accent-bg 18s infinite alternate ease-in-out;
+  animation-delay: -5s; /* Offset animation for variety */
+}
+
+.dark body::before,
+.dark body::after {
+  opacity: 0.15; /* Slightly more visible in dark mode */
+}
+
+
+@keyframes pulse-primary-bg {
+  0% { transform: scale(0.9) translate(0, 0); opacity: 0.08; }
+  50% { transform: scale(1.2) translate(10vw, 5vh); opacity: 0.15; }
+  100% { transform: scale(0.9) translate(0, 0); opacity: 0.08; }
+}
+
+@keyframes pulse-accent-bg {
+  0% { transform: scale(0.95) translate(0, 0); opacity: 0.07; }
+  50% { transform: scale(1.15) translate(-8vw, -6vh); opacity: 0.13; }
+  100% { transform: scale(0.95) translate(0, 0); opacity: 0.07; }
+}
+
+/* Ensure main content containers are above the pseudo-elements */
+main, header, footer {
+  position: relative;
+  z-index: 1;
+}
+
+/* Specific for portfolio layout to ensure content is above background */
+.flex.flex-col.min-h-screen.bg-background.text-foreground {
+    position: relative;
+    z-index: 0; /* Container for main, header, footer */
 }
 
     

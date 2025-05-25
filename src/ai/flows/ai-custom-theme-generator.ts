@@ -92,7 +92,7 @@ const prompt = ai.definePrompt({
   {{#if currentProfession}}- Profession Context: {{{currentProfession}}}{{/if}}
 
   Ensure HSL values are strings like "H S% L%".
-  Prioritize themes that are visually distinct.
+  Prioritize themes that are visually distinct from each other. This distinctiveness should apply not just to color schemes, but also to font pairings, base font sizes, and the suggested layout/card/spacing styles. For example, one theme might be a dark, tech-focused theme with sans-serif fonts and standard grid layout, while another could be a light, artistic theme with serif fonts, a larger base font size, and a minimal-rows layout.
   If mode is 'dark', ensure background colors are dark and foregrounds are light.
   If mode is 'light', ensure background colors are light and foregrounds are dark.
   The font families should be chosen carefully for readability and aesthetic fit with the vibe. Headings and body fonts should complement each other.
@@ -158,7 +158,7 @@ const generateCustomThemesFlow = ai.defineFlow(
       ...theme,
       themeName: theme.themeName || "Unnamed Theme",
       description: theme.description || "A custom generated theme.",
-      previewImagePrompt: theme.previewImagePrompt || "abstract modern ui",
+      previewImagePrompt: theme.previewImagePrompt || "abstract modern ui", // Ensure this has a fallback
       themeVariables: {
         background: theme.themeVariables.background || "0 0% 100%",
         foreground: theme.themeVariables.foreground || "0 0% 10%",
