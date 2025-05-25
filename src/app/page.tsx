@@ -37,7 +37,7 @@ export default function HomePage() {
               </div>
               <Image
                 src="https://placehold.co/600x400.png"
-                alt="Dynamic Portfolio Illustration"
+                alt="Illustration of a person building a portfolio or achieving career growth"
                 width={600}
                 height={400}
                 className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
@@ -80,7 +80,7 @@ export default function HomePage() {
                 </CardHeader>
                 <CardContent>
                   <CardDescription>
-                    Specify your style preferences, and our AI generates multiple unique themes with custom colors, fonts, and layouts.
+                    Specify style preferences and our AI generates unique themes with custom colors, fonts, and layouts. Preview and select your favorite.
                   </CardDescription>
                 </CardContent>
               </Card>
@@ -93,7 +93,7 @@ export default function HomePage() {
                 </CardHeader>
                 <CardContent>
                   <CardDescription>
-                    Live-edit your content, use AI to rewrite sections, upload or generate images, switch themes, and publish your unique portfolio.
+                    Live-edit content, upload or AI-generate images, switch themes, and use AI to enhance text, creating your perfect portfolio.
                   </CardDescription>
                 </CardContent>
               </Card>
