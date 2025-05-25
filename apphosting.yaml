@@ -7,7 +7,7 @@ runConfig:
   maxInstances: 1
   env:
     - variable: GOOGLE_API_KEY
-      secret: AIzaSyDaaP3-mr7tqtDJVXtBg78-eD3Z2LDsFrA # <-- IMPORTANT: Replace this with the name of your secret in Secret Manager
+      secret: # <-- IMPORTANT: Replace this with the name of your secret in Secret Manager
 
 # Ensure your App Hosting service agent (service-PROJECT_NUMBER@gcp-sa-apphosting.iam.gserviceaccount.com)
 # has the "Secret Manager Secret Accessor" role for the secret specified above.
