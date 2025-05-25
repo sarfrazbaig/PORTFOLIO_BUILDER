@@ -30,6 +30,7 @@ const ParseCvOutputSchema = z.object({
     linkedin: z.string().describe('The LinkedIn profile URL of the person, if available.'),
     github: z.string().describe('The GitHub profile URL of the person, if available.'),
     avatarDataUri: z.string().optional().describe('The data URI of the user\'s avatar image (e.g., data:image/png;base64,...). Populated by user action (upload or AI generation).'),
+    selectedHeaderIcon: z.string().optional().describe('The name of the lucide-react icon selected for the portfolio header.'),
   }).describe('Personal contact information extracted from the CV.'),
   summary: z.string().describe('A summary or objective statement from the CV.'),
   experience: z.array(
@@ -56,7 +57,6 @@ const ParseCvOutputSchema = z.object({
       url: z.string().describe('The URL of the project, if applicable or mentioned.'),
       imagePrompt: z.string().optional().describe('A concise prompt (2-4 keywords, e.g., "tech app dashboard", "ecommerce product page") for generating a hero image for this project.'),
       imageDataUri: z.string().optional().describe('The data URI of the AI-generated hero image for this project (e.g., data:image/png;base64,...).'),
-      // Adding fields for richer project details, to be populated by user/AI later
       keyFeatures: z.string().optional().describe('Key features of the project.'),
       myRole: z.string().optional().describe('User\'s role in the project.'),
       challengesSolutions: z.string().optional().describe('Challenges faced and solutions implemented.'),
@@ -79,7 +79,7 @@ const prompt = ai.definePrompt({
 
   Analyze the provided CV data and extract the following information:
 
-  - Personal Information: Name, email, phone, LinkedIn profile URL, GitHub profile URL. Do NOT generate an avatarDataUri.
+  - Personal Information: Name, email, phone, LinkedIn profile URL, GitHub profile URL. Do NOT generate an avatarDataUri or selectedHeaderIcon.
   - Summary: A brief summary or objective statement from the CV.
   - Experience: A list of work experiences with job title, company, dates, and description.
   - Education: A list of educational experiences with institution, degree, dates, and description.
