@@ -202,29 +202,29 @@ body::after {
   position: fixed;
   border-radius: 50%;
   z-index: -10; /* Ensure it's well behind all content */
-  opacity: 0.15; /* Increased base opacity for light mode */
-  filter: blur(150px); /* Increased blur for more softness */
+  opacity: 0.2; /* Increased base opacity for light mode */
+  filter: blur(120px); /* Slightly reduced blur */
   transition: background-color 0.7s ease-in-out, opacity 0.7s ease-in-out;
   pointer-events: none;
 }
 
 body::before {
-  width: 60vw; /* Slightly larger */
+  width: 60vw; 
   height: 60vw;
   min-width: 400px;
   min-height: 400px;
-  background-color: hsl(var(--primary) / 0.6); /* Slightly less transparent primary */
+  background-color: hsl(var(--primary)); /* Use full HSL alpha */
   top: -30vw;
   left: -30vw;
   animation: pulse-primary-bg 22s infinite alternate ease-in-out;
 }
 
 body::after {
-  width: 55vw; /* Slightly larger */
+  width: 55vw; 
   height: 55vw;
   min-width: 350px;
   min-height: 350px;
-  background-color: hsl(var(--accent) / 0.6); /* Slightly less transparent accent */
+  background-color: hsl(var(--accent)); /* Use full HSL alpha */
   bottom: -25vw;
   right: -25vw;
   animation: pulse-accent-bg 20s infinite alternate ease-in-out;
@@ -233,20 +233,20 @@ body::after {
 
 .dark body::before,
 .dark body::after {
-  opacity: 0.2; /* Increased base opacity for dark mode */
+  opacity: 0.25; /* Increased base opacity for dark mode */
 }
 
 
 @keyframes pulse-primary-bg {
-  0% { transform: scale(0.95) translate(-5vw, -5vh); opacity: 0.1; } /* Adjusted animated opacity */
-  50% { transform: scale(1.25) translate(10vw, 8vh); opacity: 0.2; } /* Adjusted animated opacity */
-  100% { transform: scale(0.95) translate(-5vw, -5vh); opacity: 0.1; } /* Adjusted animated opacity */
+  0% { transform: scale(0.95) translate(-5vw, -5vh); opacity: 0.15; } /* Adjusted animated opacity */
+  50% { transform: scale(1.25) translate(10vw, 8vh); opacity: 0.25; } /* Adjusted animated opacity */
+  100% { transform: scale(0.95) translate(-5vw, -5vh); opacity: 0.15; } /* Adjusted animated opacity */
 }
 
 @keyframes pulse-accent-bg {
-  0% { transform: scale(0.9) translate(5vw, 5vh); opacity: 0.08; } /* Adjusted animated opacity */
-  50% { transform: scale(1.2) translate(-10vw, -8vh); opacity: 0.18; } /* Adjusted animated opacity */
-  100% { transform: scale(0.9) translate(5vw, 5vh); opacity: 0.08; } /* Adjusted animated opacity */
+  0% { transform: scale(0.9) translate(5vw, 5vh); opacity: 0.12; } /* Adjusted animated opacity */
+  50% { transform: scale(1.2) translate(-10vw, -8vh); opacity: 0.22; } /* Adjusted animated opacity */
+  100% { transform: scale(0.9) translate(5vw, 5vh); opacity: 0.12; } /* Adjusted animated opacity */
 }
 
 /* Ensure main content containers are above the pseudo-elements */
