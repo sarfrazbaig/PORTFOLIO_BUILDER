@@ -67,7 +67,7 @@ export default function HeaderIconSelectorDialog({
                 key={icon.name}
                 variant="outline"
                 className={cn(
-                  "flex flex-col items-center justify-center h-24 p-2 aspect-square transition-all duration-150 ease-in-out",
+                  "flex flex-col items-center justify-center p-3 aspect-square transition-all duration-150 ease-in-out", // Removed fixed height, adjusted padding
                   currentIconName === icon.name
                     ? 'ring-2 ring-primary border-primary bg-primary/10 text-primary'
                     : 'hover:border-primary hover:bg-muted/50 active:scale-95'
@@ -75,8 +75,8 @@ export default function HeaderIconSelectorDialog({
                 onClick={() => handleSelectAndClose(icon.name)}
                 title={icon.name}
               >
-                {renderIcon(icon.name, { size: 32, className: "mb-1.5" })}
-                <span className="text-xs truncate w-full text-center">{icon.name}</span>
+                {renderIcon(icon.name, { size: 28, className: "mb-1" })} {/* Slightly smaller icon and margin */}
+                <span className="text-[10px] leading-tight truncate w-full text-center block">{icon.name}</span> {/* Smaller text, tighter leading */}
               </Button>
             ))}
             {filteredIcons.length === 0 && (
