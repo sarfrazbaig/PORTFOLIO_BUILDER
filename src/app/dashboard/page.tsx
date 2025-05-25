@@ -35,13 +35,36 @@ interface CustomThemeWithImageState extends CustomThemeOutput {
   error?: string; // To store image generation errors
 }
 
+const vibeOptions = [
+  'Professional & Serious', 
+  'Modern & Sleek', 
+  'Creative & Playful', 
+  'Minimalist & Clean',
+  'Elegant & Sophisticated',
+  'Bold & Dynamic',
+  'Friendly & Approachable',
+  'Tech Forward & Futuristic'
+];
+
+const colorPreferenceOptions = [
+  'Cool Blues & Greens', 
+  'Warm Earth Tones', 
+  'Vibrant & Energetic', 
+  'Monochromatic Grays',
+  'Deep & Rich Jewel Tones',
+  'Pastel & Soft Hues',
+  'High Contrast Black & White (with one accent)',
+  'Nature Inspired (Greens & Browns)'
+];
+
+
 export default function DashboardPage() {
   const [parsedCvData, setParsedCvData] = useState<ParseCvOutput | null>(null);
   const [initialThemeRecommendation, setInitialThemeRecommendation] = useState<RecommendThemeOutput | null>(null);
   const [isLoadingCv, setIsLoadingCv] = useState(false);
   const [customThemePreferences, setCustomThemePreferences] = useState<CustomThemePreferencesInput>({
-    vibe: 'Modern & Sleek',
-    colorPreference: 'Cool Blues',
+    vibe: vibeOptions[0],
+    colorPreference: colorPreferenceOptions[0],
     mode: 'system',
     industryInspiration: '',
   });
@@ -282,10 +305,10 @@ export default function DashboardPage() {
                 <div>
                   <Label htmlFor="vibe" className="text-base font-semibold">Overall Vibe</Label>
                   <RadioGroup id="vibe" value={customThemePreferences.vibe} onValueChange={(value) => handlePreferenceChange('vibe', value)} className="mt-2">
-                    {['Professional & Serious', 'Modern & Sleek', 'Creative & Playful', 'Minimalist & Clean'].map(v => (
+                    {vibeOptions.map(v => (
                       <div key={v} className="flex items-center space-x-2">
-                        <RadioGroupItem value={v} id={`vibe-${v.replace(/\s+/g, '-')}`} />
-                        <Label htmlFor={`vibe-${v.replace(/\s+/g, '-')}`}>{v}</Label>
+                        <RadioGroupItem value={v} id={`vibe-${v.replace(/[^\w-]+/g, '-')}`} />
+                        <Label htmlFor={`vibe-${v.replace(/[^\w-]+/g, '-')}`}>{v}</Label>
                       </div>
                     ))}
                   </RadioGroup>
@@ -293,10 +316,10 @@ export default function DashboardPage() {
                 <div>
                   <Label htmlFor="colorPreference" className="text-base font-semibold">Color Preference</Label>
                   <RadioGroup id="colorPreference" value={customThemePreferences.colorPreference} onValueChange={(value) => handlePreferenceChange('colorPreference', value)} className="mt-2">
-                    {['Cool Blues & Greens', 'Warm Earth Tones', 'Vibrant & Energetic', 'Monochromatic Grays'].map(c => (
+                    {colorPreferenceOptions.map(c => (
                        <div key={c} className="flex items-center space-x-2">
-                        <RadioGroupItem value={c} id={`color-${c.replace(/\s+/g, '-')}`} />
-                        <Label htmlFor={`color-${c.replace(/\s+/g, '-')}`}>{c}</Label>
+                        <RadioGroupItem value={c} id={`color-${c.replace(/[^\w-]+/g, '-')}`} />
+                        <Label htmlFor={`color-${c.replace(/[^\w-]+/g, '-')}`}>{c}</Label>
                       </div>
                     ))}
                   </RadioGroup>
@@ -392,6 +415,7 @@ export default function DashboardPage() {
                                 return newThemes;
                             });
                           }}
+                          key={currentPreviewTheme.imageDataUri || currentPreviewTheme.themeName} // Added key
                         />
                       </div>
                       <CardTitle className="text-xl text-accent">{currentPreviewTheme.themeName}</CardTitle>
