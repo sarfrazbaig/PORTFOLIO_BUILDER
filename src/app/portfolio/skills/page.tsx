@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sparkles, XCircle, PlusCircle, Info } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function SkillsPage() {
   const { cvData, isEditMode, setCvData } = usePortfolioContext();
@@ -25,10 +26,15 @@ export default function SkillsPage() {
     setCvData({ ...cvData, skills: updatedSkills });
   };
 
+  const animationDelay = (index: number) => {
+    const delays = ['delay-100', 'delay-200', 'delay-300', 'delay-400', 'delay-500', 'delay-600', 'delay-700'];
+    return delays[index % delays.length];
+  };
+
   if (!cvData || !cvData.skills || (cvData.skills.length === 0 && !isEditMode)) {
     return (
       <div className="container mx-auto py-12 px-4 md:px-6">
-        <Card className="max-w-2xl mx-auto shadow-md border-l-4 border-accent">
+        <Card className="max-w-2xl mx-auto shadow-md border-l-4 border-accent animate-fade-in-up">
           <CardHeader>
             <div className="flex items-center">
               <Info size={24} className="mr-3 text-accent" />
@@ -67,7 +73,7 @@ export default function SkillsPage() {
   return (
     <div className="container mx-auto py-12 md:py-16 px-6">
       <section id="skills">
-        <div className="text-center mb-12 md:mb-16">
+        <div className="text-center mb-12 md:mb-16 animate-fade-in-up">
           <h1 className="text-4xl md:text-5xl font-bold text-primary flex items-center justify-center">
             <Sparkles size={40} className="mr-4"/>Skills & Expertise
           </h1>
@@ -75,7 +81,7 @@ export default function SkillsPage() {
             A showcase of my technical and professional abilities.
           </p>
         </div>
-        <Card className="shadow-xl border-l-4 border-primary/70 bg-card/90 backdrop-blur-sm max-w-3xl mx-auto">
+        <Card className="shadow-xl border-l-4 border-primary/70 bg-card/90 backdrop-blur-sm max-w-3xl mx-auto animate-fade-in-up delay-100">
           <CardHeader className="p-6 md:p-8 bg-muted/20">
             <CardTitle className="text-xl md:text-2xl text-primary">My Core Competencies</CardTitle>
           </CardHeader>
@@ -86,7 +92,7 @@ export default function SkillsPage() {
             {skills.length > 0 && (
                 <div className="flex flex-wrap justify-center gap-x-4 gap-y-5">
                 {skills.map((skill, index) => (
-                    <div key={index} className="relative group">
+                    <div key={index} className={cn("relative group animate-fade-in-up", animationDelay(index))}>
                     <span 
                         className="bg-accent/10 text-accent text-md md:text-lg font-semibold px-6 py-3 rounded-lg shadow-md hover:bg-accent/20 transition-all cursor-default transform hover:scale-105 block"
                     >

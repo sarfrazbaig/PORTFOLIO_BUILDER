@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Lightbulb, Info, Layers } from 'lucide-react';
 import NextImage from 'next/image';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 export default function ProjectsPage() {
   const { cvData, isEditMode, updateCvField, theme } 
@@ -17,7 +18,7 @@ export default function ProjectsPage() {
   if (!cvData || !cvData.projects || cvData.projects.length === 0) {
     return (
       <div className="container mx-auto py-16 px-4 md:px-6">
-        <Card className="max-w-2xl mx-auto shadow-md border-l-4 border-accent themed-card">
+        <Card className="max-w-2xl mx-auto shadow-md border-l-4 border-accent themed-card animate-fade-in-up">
           <CardHeader>
             <div className="flex items-center">
               <Info size={24} className="mr-3 text-accent" />
@@ -45,11 +46,16 @@ export default function ProjectsPage() {
   const handleInputChange = (index: number, field: 'name' | 'description', value: string) => {
     updateCvField(`projects.${index}.${field}`, value);
   };
+
+  const animationDelay = (index: number) => {
+    const delays = ['delay-100', 'delay-200', 'delay-300', 'delay-400', 'delay-500', 'delay-600'];
+    return delays[index % delays.length];
+  };
   
   return (
     <div className="container mx-auto py-12 md:py-16 px-6">
       <section id="projects">
-        <div className="text-center mb-12 md:mb-16">
+        <div className="text-center mb-12 md:mb-16 animate-fade-in-up">
           <h1 className="text-4xl md:text-5xl font-bold text-primary flex items-center justify-center">
             <Lightbulb size={40} className="mr-4"/>Featured Projects
           </h1>
@@ -71,60 +77,59 @@ export default function ProjectsPage() {
             style={{gap: spacingMultiplierCSSVar}} 
         >
           {projects.map((project, index) => (
-            <Card 
-              key={index} 
-              className="themed-card flex flex-col group bg-card/90 backdrop-blur-sm overflow-hidden h-full transition-all duration-300 ease-in-out hover:shadow-2xl hover:-translate-y-2" // Added hover lift and shadow
-            >
-              <div className="relative overflow-hidden aspect-[16/10] bg-muted rounded-t-lg"> {/* Ensure top corners are rounded if image is at top */}
-                <NextImage 
-                  src={project.imageDataUri || `https://placehold.co/600x375.png`} 
-                  alt={project.name || 'Project image'} 
-                  width={600} 
-                  height={375} 
-                  className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300" // Image zoom on hover
-                  data-ai-hint={project.imagePrompt || "application screenshot"}
-                />
-              </div>
-              <CardHeader className="p-6">
-                {isEditMode ? (
-                  <Input
-                    value={project.name || ''}
-                    onChange={(e) => handleInputChange(index, 'name', e.target.value)}
-                    placeholder="Project Name"
-                    className="text-xl md:text-2xl text-primary font-semibold bg-transparent border-2 border-dashed border-primary/30 focus:border-primary group-hover:text-accent"
+            <div key={index} className={cn('h-full animate-fade-in-up', animationDelay(index))}>
+              <Card 
+                className="themed-card flex flex-col group bg-card/90 backdrop-blur-sm overflow-hidden h-full transition-all duration-300 ease-in-out hover:shadow-2xl hover:-translate-y-2"
+              >
+                <div className="relative overflow-hidden aspect-[16/10] bg-muted rounded-t-lg">
+                  <NextImage 
+                    src={project.imageDataUri || `https://placehold.co/600x375.png`} 
+                    alt={project.name || 'Project image'} 
+                    width={600} 
+                    height={375} 
+                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                    data-ai-hint={project.imagePrompt || "application screenshot"}
                   />
-                ) : (
-                  <CardTitle className="text-xl md:text-2xl text-primary group-hover:text-accent transition-colors">{project.name || 'Untitled Project'}</CardTitle>
-                )}
-              </CardHeader>
-              <CardContent className="p-6 pt-0 flex-grow">
-                {isEditMode ? (
-                  <Textarea
-                    value={project.description || ''}
-                    onChange={(e) => handleInputChange(index, 'description', e.target.value)}
-                    placeholder="Project description..."
-                    className="text-md text-muted-foreground whitespace-pre-line leading-relaxed bg-transparent border-2 border-dashed border-primary/30 focus:border-primary min-h-[80px] line-clamp-3"
-                    rows={3}
-                  />
-                ) : (
-                   <CardDescription className="text-md text-muted-foreground mb-4 whitespace-pre-line leading-relaxed line-clamp-3">{project.description || 'No description available.'}</CardDescription>
-                )}
-              </CardContent>
-               <CardContent className="p-6 pt-0 border-t border-border/30 mt-auto">
-                <Link href={`/portfolio/projects/${encodeURIComponent(project.name || `project-${index}`)}`} passHref legacyBehavior>
-                  <a className="block w-full">
-                    <Button variant="ghost" className="w-full group/link text-accent hover:text-accent-foreground hover:bg-accent/10 active:scale-95 transition-all duration-300 py-3 text-md mt-4">
-                        View Details <Layers size={18} className="ml-2 opacity-70 group-hover/link:opacity-100 transition-opacity" />
-                    </Button>
-                  </a>
-                </Link>
-              </CardContent>
-            </Card>
+                </div>
+                <CardHeader className="p-6">
+                  {isEditMode ? (
+                    <Input
+                      value={project.name || ''}
+                      onChange={(e) => handleInputChange(index, 'name', e.target.value)}
+                      placeholder="Project Name"
+                      className="text-xl md:text-2xl text-primary font-semibold bg-transparent border-2 border-dashed border-primary/30 focus:border-primary group-hover:text-accent"
+                    />
+                  ) : (
+                    <CardTitle className="text-xl md:text-2xl text-primary group-hover:text-accent transition-colors">{project.name || 'Untitled Project'}</CardTitle>
+                  )}
+                </CardHeader>
+                <CardContent className="p-6 pt-0 flex-grow">
+                  {isEditMode ? (
+                    <Textarea
+                      value={project.description || ''}
+                      onChange={(e) => handleInputChange(index, 'description', e.target.value)}
+                      placeholder="Project description..."
+                      className="text-md text-muted-foreground whitespace-pre-line leading-relaxed bg-transparent border-2 border-dashed border-primary/30 focus:border-primary min-h-[80px] line-clamp-3"
+                      rows={3}
+                    />
+                  ) : (
+                     <CardDescription className="text-md text-muted-foreground mb-4 whitespace-pre-line leading-relaxed line-clamp-3">{project.description || 'No description available.'}</CardDescription>
+                  )}
+                </CardContent>
+                 <CardContent className="p-6 pt-0 border-t border-border/30 mt-auto">
+                  <Link href={`/portfolio/projects/${encodeURIComponent(project.name || `project-${index}`)}`} passHref legacyBehavior>
+                    <a className="block w-full">
+                      <Button variant="ghost" className="w-full group/link text-accent hover:text-accent-foreground hover:bg-accent/10 active:scale-95 transition-all duration-300 py-3 text-md mt-4">
+                          View Details <Layers size={18} className="ml-2 opacity-70 group-hover/link:opacity-100 transition-opacity" />
+                      </Button>
+                    </a>
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
           ))}
         </div>
       </section>
     </div>
   );
 }
-
-    
