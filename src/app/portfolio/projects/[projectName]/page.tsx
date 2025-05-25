@@ -91,6 +91,7 @@ export default function ProjectDetailPage() {
   const handleProjectFieldChange = (field: keyof ProjectType, value: string) => {
     if (projectIndex === null) return;
     updateCvField(`projects.${projectIndex}.${field}`, value);
+    // Update local project state to reflect changes immediately, especially for imagePrompt
     setProject(prev => prev ? {...prev, [field]: value} : null);
   };
 
@@ -200,15 +201,15 @@ export default function ProjectDetailPage() {
   if (isGeneratingImage) {
     imageSourceToDisplay = `https://placehold.co/800x450.png?text=Generating...`;
     altTextForImage = `Generating image for ${project.name || 'Project'}`;
-  } else if (project.imageDataUri) {
-    imageSourceToDisplay = project.imageDataUri;
-    altTextForImage = `${project.name || 'Project'} main image`;
   } else if (imageError) {
     imageSourceToDisplay = `https://placehold.co/800x450.png?text=AI+Error`;
     altTextForImage = `Error generating image for ${project.name || 'Project'}`;
   } else if (imageLoadError) {
      imageSourceToDisplay = `https://placehold.co/800x450.png?text=Load+Fail`;
      altTextForImage = `Failed to load image for ${project.name || 'Project'}`;
+  } else if (project.imageDataUri) { // Check this last to ensure actual image is prioritized
+    imageSourceToDisplay = project.imageDataUri;
+    altTextForImage = `${project.name || 'Project'} main image`;
   }
 
 
@@ -478,3 +479,5 @@ export default function ProjectDetailPage() {
     </div>
   );
 }
+
+    

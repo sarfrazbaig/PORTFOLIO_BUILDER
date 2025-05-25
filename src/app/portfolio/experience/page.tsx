@@ -55,7 +55,7 @@ export default function ExperiencePage() {
           {experience.map((exp, index) => (
             <Card 
               key={index} 
-              className="shadow-lg hover:shadow-2xl transition-all duration-300 ease-in-out border-t-4 border-primary bg-card/90 backdrop-blur-sm overflow-hidden hover:-translate-y-1"
+              className="themed-card shadow-lg border-t-4 border-primary bg-card/90 backdrop-blur-sm overflow-hidden hover:-translate-y-1 transition-all duration-300 ease-in-out"
             >
               <CardHeader className="p-6 md:p-8 bg-muted/20">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
@@ -141,3 +141,5 @@ export default function ExperiencePage() {
     </div>
   );
 }
+
+    

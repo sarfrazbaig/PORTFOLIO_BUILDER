@@ -73,15 +73,15 @@ export default function ProjectsPage() {
           {projects.map((project, index) => (
             <Card 
               key={index} 
-              className="themed-card flex flex-col group bg-card/90 backdrop-blur-sm overflow-hidden h-full transition-all duration-300 ease-in-out hover:shadow-2xl hover:-translate-y-2"
+              className="themed-card flex flex-col group bg-card/90 backdrop-blur-sm overflow-hidden h-full transition-all duration-300 ease-in-out hover:shadow-2xl hover:-translate-y-2" // Added hover lift and shadow
             >
-              <div className="relative overflow-hidden aspect-[16/10] bg-muted">
+              <div className="relative overflow-hidden aspect-[16/10] bg-muted rounded-t-lg"> {/* Ensure top corners are rounded if image is at top */}
                 <NextImage 
                   src={project.imageDataUri || `https://placehold.co/600x375.png`} 
                   alt={project.name || 'Project image'} 
                   width={600} 
                   height={375} 
-                  className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                  className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300" // Image zoom on hover
                   data-ai-hint={project.imagePrompt || "application screenshot"}
                 />
               </div>
@@ -126,3 +126,5 @@ export default function ProjectsPage() {
     </div>
   );
 }
+
+    
