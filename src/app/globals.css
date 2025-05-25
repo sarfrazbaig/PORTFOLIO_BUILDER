@@ -201,9 +201,9 @@ body::after {
   content: '';
   position: fixed;
   border-radius: 50%;
-  z-index: -10; /* Ensure it's well behind all content */
-  opacity: 0.2; /* Increased base opacity for light mode */
-  filter: blur(120px); /* Slightly reduced blur */
+  z-index: -10; 
+  opacity: 0.3; /* Increased base opacity */
+  filter: blur(120px);
   transition: background-color 0.7s ease-in-out, opacity 0.7s ease-in-out;
   pointer-events: none;
 }
@@ -213,10 +213,14 @@ body::before {
   height: 60vw;
   min-width: 400px;
   min-height: 400px;
-  background-color: hsl(var(--primary)); /* Use full HSL alpha */
+  background-color: hsl(var(--primary));
   top: -30vw;
   left: -30vw;
-  animation: pulse-primary-bg 22s infinite alternate ease-in-out;
+  animation-name: pulse-primary-bg;
+  animation-duration: 22s;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-timing-function: ease-in-out;
 }
 
 body::after {
@@ -224,30 +228,59 @@ body::after {
   height: 55vw;
   min-width: 350px;
   min-height: 350px;
-  background-color: hsl(var(--accent)); /* Use full HSL alpha */
+  background-color: hsl(var(--accent));
   bottom: -25vw;
   right: -25vw;
-  animation: pulse-accent-bg 20s infinite alternate ease-in-out;
+  animation-name: pulse-accent-bg;
+  animation-duration: 20s;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-timing-function: ease-in-out;
   animation-delay: -6s;
 }
 
-.dark body::before,
-.dark body::after {
-  opacity: 0.25; /* Increased base opacity for dark mode */
-}
-
-
+/* Default (Light Mode) Animations */
 @keyframes pulse-primary-bg {
-  0% { transform: scale(0.95) translate(-5vw, -5vh); opacity: 0.15; } /* Adjusted animated opacity */
-  50% { transform: scale(1.25) translate(10vw, 8vh); opacity: 0.25; } /* Adjusted animated opacity */
-  100% { transform: scale(0.95) translate(-5vw, -5vh); opacity: 0.15; } /* Adjusted animated opacity */
+  0% { transform: scale(0.95) translate(-5vw, -5vh); opacity: 0.2; }
+  50% { transform: scale(1.35) translate(10vw, 8vh); opacity: 0.35; }
+  100% { transform: scale(0.95) translate(-5vw, -5vh); opacity: 0.2; }
 }
 
 @keyframes pulse-accent-bg {
-  0% { transform: scale(0.9) translate(5vw, 5vh); opacity: 0.12; } /* Adjusted animated opacity */
-  50% { transform: scale(1.2) translate(-10vw, -8vh); opacity: 0.22; } /* Adjusted animated opacity */
-  100% { transform: scale(0.9) translate(5vw, 5vh); opacity: 0.12; } /* Adjusted animated opacity */
+  0% { transform: scale(0.9) translate(5vw, 5vh); opacity: 0.18; }
+  50% { transform: scale(1.3) translate(-10vw, -8vh); opacity: 0.32; }
+  100% { transform: scale(0.9) translate(5vw, 5vh); opacity: 0.18; }
 }
+
+/* Dark Mode Specific Animations & Overrides */
+.dark body::before,
+.dark body::after {
+  opacity: 0.35; /* Slightly higher base opacity for dark mode */
+}
+
+.dark body::before {
+  animation-name: pulse-primary-bg-dark-variant;
+  animation-duration: 28s; /* Slower and different duration */
+}
+
+.dark body::after {
+  animation-name: pulse-accent-bg-dark-variant;
+  animation-duration: 25s; /* Slower and different duration */
+  animation-delay: -8s;
+}
+
+@keyframes pulse-primary-bg-dark-variant {
+  0% { transform: scale(1.0) translate(-3vw, -3vh); opacity: 0.25; }
+  50% { transform: scale(1.4) translate(8vw, 6vh); opacity: 0.4; }
+  100% { transform: scale(1.0) translate(-3vw, -3vh); opacity: 0.25; }
+}
+
+@keyframes pulse-accent-bg-dark-variant {
+  0% { transform: scale(0.95) translate(3vw, 3vh); opacity: 0.22; }
+  50% { transform: scale(1.35) translate(-8vw, -6vh); opacity: 0.38; }
+  100% { transform: scale(0.95) translate(3vw, 3vh); opacity: 0.22; }
+}
+
 
 /* Ensure main content containers are above the pseudo-elements */
 main, header, footer {
@@ -256,7 +289,7 @@ main, header, footer {
 }
 
 /* Specific for portfolio layout to ensure content is above background */
-.flex.flex-col.min-h-screen.bg-background.text-foreground {
+.flex.flex-col.min-h-screen.text-foreground { /* Matches portfolio layout wrapper */
     position: relative;
     z-index: 0; /* Container for main, header, footer */
 }
