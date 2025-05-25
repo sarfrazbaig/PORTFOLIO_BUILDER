@@ -26,13 +26,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 const CV_DATA_KEY = 'cvPortfolioData';
 const THEME_RECOMMENDATION_KEY = 'cvPortfolioTheme';
-const AVAILABLE_THEMES_KEY = 'cvPortfolioAvailableThemes'; // New key for storing all generated themes
+const AVAILABLE_THEMES_KEY = 'cvPortfolioAvailableThemes'; 
 
-// Extend CustomThemeOutput to include image generation state
 interface CustomThemeWithImageState extends CustomThemeOutput {
   imageDataUri?: string;
   isLoadingImage?: boolean;
-  error?: string; // To store image generation errors
+  error?: string; 
 }
 
 const vibeOptions = [
@@ -84,12 +83,11 @@ export default function DashboardPage() {
     if (storedTheme) {
       try {
         const theme = JSON.parse(storedTheme) as PortfolioTheme;
-        if (!theme.themeVariables) { // This is a basic theme recommendation
+        if (!theme.themeVariables) { 
             setInitialThemeRecommendation({themeName: theme.themeName, reason: theme.reason || ''});
         }
       } catch (e) { console.error("Failed to parse theme recommendation", e); localStorage.removeItem(THEME_RECOMMENDATION_KEY); }
     }
-     // Load previously generated custom themes for preview consistency if user navigates away and back
     const storedAvailableThemes = localStorage.getItem(AVAILABLE_THEMES_KEY);
     if (storedAvailableThemes) {
         try {
@@ -112,9 +110,7 @@ export default function DashboardPage() {
 
   const handleInitialThemeRecommended = (data: RecommendThemeOutput) => {
     setInitialThemeRecommendation(data);
-    // Save this initial recommendation if no custom theme is selected yet.
-    // This will be overwritten if a custom theme is later chosen.
-    const basicTheme: PortfolioTheme = { themeName: data.themeName, reason: data.reason };
+    const basicTheme: PortfolioTheme = { themeName: data.themeName, reason: data.reason, themeVariables: {} as any, previewImagePrompt: '' }; // Ensure type compatibility
     localStorage.setItem(THEME_RECOMMENDATION_KEY, JSON.stringify(basicTheme));
   };
 
@@ -133,7 +129,7 @@ export default function DashboardPage() {
     }
     setIsGeneratingThemes(true);
     setGeneratedCustomThemesWithImages([]);
-    setSelectedThemeNameForPreview(null); // Reset preview selection
+    setSelectedThemeNameForPreview(null); 
     toast({ title: "Generating Custom Themes...", description: "The AI is crafting options." });
     try {
       const input: CustomThemePreferencesInput = {
@@ -146,11 +142,10 @@ export default function DashboardPage() {
         toast({ title: "Custom Themes Generated!", description: "Now generating preview images..." });
         const themesWithLoadingState: CustomThemeWithImageState[] = result.themes.map(theme => ({ ...theme, isLoadingImage: true, imageDataUri: undefined, error: undefined }));
         
-        // Save to localStorage immediately for header dropdown
-        localStorage.setItem(AVAILABLE_THEMES_KEY, JSON.stringify(themesWithLoadingState.map(t => ({...t, isLoadingImage: undefined, error: undefined})))); // Store clean theme objects
+        localStorage.setItem(AVAILABLE_THEMES_KEY, JSON.stringify(themesWithLoadingState.map(t => ({...t, isLoadingImage: undefined, error: undefined})))); 
         
         setGeneratedCustomThemesWithImages(themesWithLoadingState);
-        setSelectedThemeNameForPreview(themesWithLoadingState[0].themeName); // Auto-select first for preview
+        setSelectedThemeNameForPreview(themesWithLoadingState[0].themeName); 
 
         themesWithLoadingState.forEach(async (theme, index) => {
           let finalPrompt = theme.previewImagePrompt || "abstract theme representation";
@@ -171,7 +166,6 @@ export default function DashboardPage() {
                         error: imageResult.imageDataUri ? undefined : imageResult.error || "Failed to generate image.",
                     };
                 }
-                // Update localStorage with image data if needed for persistence across sessions on dashboard
                 localStorage.setItem(AVAILABLE_THEMES_KEY, JSON.stringify(newThemes.map(t => ({...t, isLoadingImage: undefined, error: undefined}))));
                 return newThemes;
               });
@@ -204,12 +198,12 @@ export default function DashboardPage() {
         });
       } else {
         toast({ title: "No Themes Generated", description: "The AI couldn't generate themes. Try adjusting preferences.", variant: "destructive" });
-         localStorage.removeItem(AVAILABLE_THEMES_KEY); // Clear if no themes
+         localStorage.removeItem(AVAILABLE_THEMES_KEY); 
       }
     } catch (error) {
       console.error("Custom theme generation error:", error);
       toast({ title: "Theme Generation Failed", description: "An error occurred. Please try again.", variant: "destructive" });
-      localStorage.removeItem(AVAILABLE_THEMES_KEY); // Clear on error
+      localStorage.removeItem(AVAILABLE_THEMES_KEY); 
     } finally {
       setIsGeneratingThemes(false);
     }
@@ -220,14 +214,11 @@ export default function DashboardPage() {
         toast({title: "No theme selected", description: "Please select a theme from the dropdown.", variant: "destructive"});
         return;
     }
-    // The theme object for the context should not include dashboard-specific states like isLoadingImage
     const portfolioThemeToSave: PortfolioTheme = {
       themeName: themeToApply.themeName,
       description: themeToApply.description,
       themeVariables: themeToApply.themeVariables,
       previewImagePrompt: themeToApply.previewImagePrompt,
-      // previewImageDataUri is primarily for dashboard preview, not critical for portfolio rendering context
-      // but can be included if desired for consistency.
       previewImageDataUri: themeToApply.imageDataUri 
     };
     localStorage.setItem(THEME_RECOMMENDATION_KEY, JSON.stringify(portfolioThemeToSave));
@@ -262,7 +253,7 @@ export default function DashboardPage() {
 
       {parsedCvData && (
         <div className="text-center my-6">
-          <Button onClick={handleStartOver} variant="outline" size="lg">
+          <Button onClick={handleStartOver} variant="outline" size="lg" className="active:scale-95 transition-transform">
             <RotateCcw className="mr-2 h-5 w-5" />
             Upload New CV / Start Over
           </Button>
@@ -346,7 +337,7 @@ export default function DashboardPage() {
                     className="mt-2"
                 />
               </div>
-              <Button onClick={handleGenerateCustomThemes} disabled={isGeneratingThemes} size="lg" className="w-full">
+              <Button onClick={handleGenerateCustomThemes} disabled={isGeneratingThemes} size="lg" className="w-full active:scale-95 transition-transform">
                 {isGeneratingThemes ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
                 Generate Custom Theme Options
               </Button>
@@ -372,7 +363,7 @@ export default function DashboardPage() {
                         value={selectedThemeNameForPreview || undefined} 
                         onValueChange={(value) => setSelectedThemeNameForPreview(value)}
                     >
-                        <SelectTrigger className="w-full text-lg py-3">
+                        <SelectTrigger className="w-full text-lg py-3 hover:border-primary transition-colors">
                             <SelectValue placeholder="Choose a theme to preview..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -386,7 +377,7 @@ export default function DashboardPage() {
                 </div>
 
               {currentPreviewTheme && (
-                  <Card key={currentPreviewTheme.themeName} className="shadow-md hover:shadow-xl transition-shadow flex flex-col max-w-lg mx-auto my-4">
+                  <Card key={currentPreviewTheme.themeName} className="shadow-md hover:shadow-xl transition-all duration-300 flex flex-col max-w-lg mx-auto my-4 hover:border-primary">
                     <CardHeader className="p-4">
                       <div className="aspect-video bg-muted rounded-md overflow-hidden mb-3 relative">
                         {currentPreviewTheme.isLoadingImage && (
@@ -415,7 +406,7 @@ export default function DashboardPage() {
                                 return newThemes;
                             });
                           }}
-                          key={currentPreviewTheme.imageDataUri || currentPreviewTheme.themeName} // Added key
+                          key={currentPreviewTheme.imageDataUri || currentPreviewTheme.themeName} 
                         />
                       </div>
                       <CardTitle className="text-xl text-accent">{currentPreviewTheme.themeName}</CardTitle>
@@ -425,7 +416,7 @@ export default function DashboardPage() {
                       )}
                     </CardHeader>
                     <CardContent className="p-4 pt-0 flex-grow flex flex-col justify-end">
-                       <Button onClick={() => handleSelectCustomTheme(currentPreviewTheme)} className="w-full mt-auto" size="lg" disabled={!currentPreviewTheme}>
+                       <Button onClick={() => handleSelectCustomTheme(currentPreviewTheme)} className="w-full mt-auto active:scale-95 transition-transform" size="lg" disabled={!currentPreviewTheme}>
                          Apply & View Portfolio <Eye className="ml-2 h-4 w-4"/>
                        </Button>
                     </CardContent>

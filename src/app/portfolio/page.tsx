@@ -13,6 +13,19 @@ import { Mail, Phone, Linkedin, Github, UserCircle, Sparkles, Upload, Loader2, A
 import AiHelperDialog from '@/components/ai-helper-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import type { ParseCvOutput as CvDataRootType } from '@/ai/flows/cv-parser'; // Renamed for clarity
+
+// Define specific type for personalInformation to include customProfession
+type OriginalPersonalInformation = CvDataRootType['personalInformation'];
+interface PersonalInformationType extends OriginalPersonalInformation {
+  customProfession?: string;
+}
+
+// Update ParseCvOutput to use the more specific PersonalInformationType
+interface ParseCvOutput extends Omit<CvDataRootType, 'personalInformation'> {
+  personalInformation: PersonalInformationType;
+}
+
 
 const getInitials = (name?: string) => {
   if (!name) return '??';
@@ -27,7 +40,24 @@ interface AiEditConfig {
   label: string;
 }
 
-// Define layout components
+interface HeroSectionProps {
+  personalInformation: PersonalInformationType;
+  isEditMode: boolean;
+  handleInputChange: (path: string, value: string) => void;
+  handleProfessionChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  profession: string | null;
+  summary: string | undefined;
+  setCvData: React.Dispatch<React.SetStateAction<ParseCvOutput | null>>;
+  openAiDialog: (content: string, onUpdate: (newText: string) => void, label: string) => void;
+  avatarSrc: string;
+  handleAvatarUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  avatarFileInputRef: React.RefObject<HTMLInputElement>;
+  handleGenerateAvatar: () => void;
+  isGeneratingAvatar: boolean;
+  avatarError: string | null;
+}
+
+
 const HeroSectionFocus: React.FC<HeroSectionProps> = ({
   personalInformation, isEditMode, handleInputChange, handleProfessionChange, profession,
   summary, setCvData, openAiDialog, avatarSrc, handleAvatarUpload, avatarFileInputRef,
@@ -36,7 +66,6 @@ const HeroSectionFocus: React.FC<HeroSectionProps> = ({
   <section
     className={cn(
       "relative overflow-hidden bg-gradient-to-br from-background via-card to-background/80 border-b border-border/30",
-      // Spacing applied by parent
     )}
   >
     <div className="absolute inset-0 opacity-20">
@@ -52,7 +81,7 @@ const HeroSectionFocus: React.FC<HeroSectionProps> = ({
                 src={avatarSrc}
                 alt={personalInformation.name || 'User Avatar'}
                 data-ai-hint="profile portrait professional"
-                key={avatarSrc} // Force re-render if src changes
+                key={avatarSrc} 
               />
               <AvatarFallback className="text-6xl md:text-7xl">{getInitials(personalInformation.name)}</AvatarFallback>
             </Avatar>
@@ -63,10 +92,10 @@ const HeroSectionFocus: React.FC<HeroSectionProps> = ({
             )}
             {isEditMode && (
               <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <Button onClick={() => avatarFileInputRef.current?.click()} size="icon" variant="outline" className="bg-background/80 hover:bg-background" title="Upload Avatar" disabled={isGeneratingAvatar}>
+                <Button onClick={() => avatarFileInputRef.current?.click()} size="icon" variant="outline" className="bg-background/80 hover:bg-background active:scale-90 transition-transform" title="Upload Avatar" disabled={isGeneratingAvatar}>
                   <Upload size={20} />
                 </Button>
-                <Button onClick={handleGenerateAvatar} size="icon" variant="outline" className="bg-background/80 hover:bg-background" title="Generate Avatar with AI" disabled={isGeneratingAvatar}>
+                <Button onClick={handleGenerateAvatar} size="icon" variant="outline" className="bg-background/80 hover:bg-background active:scale-90 transition-transform" title="Generate Avatar with AI" disabled={isGeneratingAvatar}>
                   {isGeneratingAvatar ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
                 </Button>
               </div>
@@ -86,14 +115,14 @@ const HeroSectionFocus: React.FC<HeroSectionProps> = ({
             <div className="mt-6 flex flex-wrap justify-center md:justify-start gap-3">
               {personalInformation.linkedin && (
                 <a href={personalInformation.linkedin} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" className="border-primary/50 text-primary hover:bg-primary/10">
+                  <Button variant="outline" className="border-primary/50 text-primary hover:bg-primary/10 hover:scale-105 active:scale-95 transition-all duration-200">
                     <Linkedin size={18} className="mr-2" /> LinkedIn
                   </Button>
                 </a>
               )}
               {personalInformation.github && (
                 <a href={personalInformation.github} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" className="border-accent/50 text-accent hover:bg-accent/10">
+                  <Button variant="outline" className="border-accent/50 text-accent hover:bg-accent/10 hover:scale-105 active:scale-95 transition-all duration-200">
                     <Github size={18} className="mr-2" /> GitHub
                   </Button>
                 </a>
@@ -154,7 +183,7 @@ const HeroSectionFocus: React.FC<HeroSectionProps> = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute top-2 right-2 text-primary/70 hover:text-primary"
+                className="absolute top-2 right-2 text-primary/70 hover:text-primary active:scale-90 transition-transform"
                 onClick={() => openAiDialog(
                   summary || '',
                   (newText) => setCvData(prev => prev ? { ...prev, summary: newText } : null),
@@ -168,7 +197,7 @@ const HeroSectionFocus: React.FC<HeroSectionProps> = ({
           </div>
           <div className="mt-8 text-center md:text-left">
             <a href="#contact-info">
-              <Button size="lg" variant="default" className="group shadow-lg hover:shadow-primary/30 transition-shadow">
+              <Button size="lg" variant="default" className="group shadow-lg hover:shadow-primary/30 transition-all duration-300 hover:scale-105 active:scale-95">
                 Get In Touch <ArrowDownCircle size={20} className="ml-2 group-hover:translate-y-0.5 transition-transform" />
               </Button>
             </a>
@@ -187,7 +216,6 @@ const HeroSectionMinimal: React.FC<HeroSectionProps> = ({
   <section
     className={cn(
       "relative overflow-hidden border-b border-border/30 text-center",
-       // Spacing applied by parent
     )}
   >
     <div className="absolute inset-0 opacity-10">
@@ -207,10 +235,10 @@ const HeroSectionMinimal: React.FC<HeroSectionProps> = ({
         )}
         {isEditMode && (
           <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <Button onClick={() => avatarFileInputRef.current?.click()} size="sm" variant="outline" className="bg-background/80 hover:bg-background px-2 py-1 text-xs" title="Upload Avatar" disabled={isGeneratingAvatar}>
+            <Button onClick={() => avatarFileInputRef.current?.click()} size="sm" variant="outline" className="bg-background/80 hover:bg-background px-2 py-1 text-xs active:scale-90 transition-transform" title="Upload Avatar" disabled={isGeneratingAvatar}>
               <Upload size={16} className="mr-1"/> Upload
             </Button>
-            <Button onClick={handleGenerateAvatar} size="sm" variant="outline" className="bg-background/80 hover:bg-background px-2 py-1 text-xs" title="Generate Avatar with AI" disabled={isGeneratingAvatar}>
+            <Button onClick={handleGenerateAvatar} size="sm" variant="outline" className="bg-background/80 hover:bg-background px-2 py-1 text-xs active:scale-90 transition-transform" title="Generate Avatar with AI" disabled={isGeneratingAvatar}>
               {isGeneratingAvatar ? <Loader2 size={16} className="animate-spin mr-1" /> : <Sparkles size={16} className="mr-1" />} AI Gen
             </Button>
           </div>
@@ -264,7 +292,7 @@ const HeroSectionMinimal: React.FC<HeroSectionProps> = ({
              )
         )}
         {isEditMode && (
-          <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-primary/70 hover:text-primary"
+          <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-primary/70 hover:text-primary active:scale-90 transition-transform"
             onClick={() => openAiDialog(summary || '', (newText) => setCvData(prev => prev ? { ...prev, summary: newText } : null), 'Professional Summary')}
             title="Rewrite Summary with AI">
             <Sparkles size={18} />
@@ -275,14 +303,14 @@ const HeroSectionMinimal: React.FC<HeroSectionProps> = ({
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           {personalInformation.linkedin && (
             <a href={personalInformation.linkedin} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" className="border-primary/50 text-primary hover:bg-primary/10">
+              <Button variant="outline" size="sm" className="border-primary/50 text-primary hover:bg-primary/10 hover:scale-105 active:scale-95 transition-all duration-200">
                 <Linkedin size={16} className="mr-1.5" /> LinkedIn
               </Button>
             </a>
           )}
           {personalInformation.github && (
             <a href={personalInformation.github} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" className="border-accent/50 text-accent hover:bg-accent/10">
+              <Button variant="outline" size="sm" className="border-accent/50 text-accent hover:bg-accent/10 hover:scale-105 active:scale-95 transition-all duration-200">
                 <Github size={16} className="mr-1.5" /> GitHub
               </Button>
             </a>
@@ -292,40 +320,6 @@ const HeroSectionMinimal: React.FC<HeroSectionProps> = ({
     </div>
   </section>
 );
-
-interface HeroSectionProps {
-  personalInformation: ParseCvOutput['personalInformation'];
-  isEditMode: boolean;
-  handleInputChange: (path: string, value: string) => void;
-  handleProfessionChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  profession: string | null;
-  summary: string | undefined;
-  setCvData: React.Dispatch<React.SetStateAction<ParseCvOutput | null>>;
-  openAiDialog: (content: string, onUpdate: (newText: string) => void, label: string) => void;
-  avatarSrc: string;
-  handleAvatarUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  avatarFileInputRef: React.RefObject<HTMLInputElement>;
-  handleGenerateAvatar: () => void;
-  isGeneratingAvatar: boolean;
-  avatarError: string | null;
-}
-
-interface ParseCvOutput {
-  personalInformation: {
-    name?: string;
-    email?: string;
-    phone?: string;
-    linkedin?: string;
-    github?: string;
-    avatarDataUri?: string;
-    customProfession?: string; // Added for direct edit
-  };
-  summary?: string;
-  experience: Array<any>; // Define more specific types if needed
-  education: Array<any>;
-  skills: string[];
-  projects: Array<any>;
-}
 
 
 export default function PortfolioHomePage() {
@@ -338,14 +332,14 @@ export default function PortfolioHomePage() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const [currentLayout, setCurrentLayout] = useState('focus-hero'); // Default layout
-  const [currentSpacing, setCurrentSpacing] = useState('py-16 md:py-20'); // Default spacing
+  const [currentLayout, setCurrentLayout] = useState('focus-hero'); 
+  const [currentSpacing, setCurrentSpacing] = useState('py-16 md:py-20'); 
 
   useEffect(() => {
     if (theme?.themeVariables?.layoutStyle) {
       setCurrentLayout(theme.themeVariables.layoutStyle);
     } else {
-      setCurrentLayout('focus-hero'); // Fallback
+      setCurrentLayout('focus-hero'); 
     }
 
     const spacingScale = theme?.themeVariables?.spacingScale || 'regular';
@@ -450,29 +444,29 @@ export default function PortfolioHomePage() {
   const contactSkillsLayoutClasses = () => {
     switch (currentLayout) {
       case 'minimal-rows':
-        return "flex flex-col items-center text-center space-y-12 md:space-y-16"; // Centered, single column for content below hero
+        return "flex flex-col items-center text-center space-y-12 md:space-y-16"; 
       case 'focus-hero':
       default:
-        return "space-y-16 md:space-y-20"; // Standard spacing for sections below hero
+        return "space-y-16 md:space-y-20"; 
     }
   };
 
   return (
     <>
-      <div className={currentSpacing}> {/* Apply dynamic vertical spacing to the hero container */}
+      <div className={currentSpacing}> 
         {renderHeroSection()}
       </div>
       
       <div className={cn("container mx-auto px-6", currentSpacing, contactSkillsLayoutClasses())}>
         {(personalInformation.email || personalInformation.phone || isEditMode) &&
-          <section id="contact-info" className={cn(currentLayout === 'minimal-rows' ? 'w-full max-w-xl' : '')}>
+          <section id="contact-info" className={cn(currentLayout === 'minimal-rows' ? 'w-full max-w-xl' : '', 'transition-all duration-300')}>
             <div className="text-center mb-10 md:mb-12">
               <h2 className="text-3xl md:text-4xl font-bold text-primary flex items-center justify-center">
                 <UserCircle size={36} className="mr-3" />Contact Information
               </h2>
               <p className="text-lg text-muted-foreground mt-2">How to reach me.</p>
             </div>
-            <Card className={cn("themed-card shadow-xl border-l-4 border-primary/70 bg-card/80 backdrop-blur-sm", currentLayout === 'minimal-rows' ? 'mx-auto' : 'max-w-3xl mx-auto')}>
+            <Card className={cn("themed-card shadow-xl border-l-4 border-primary/70 bg-card/80 backdrop-blur-sm", currentLayout === 'minimal-rows' ? 'mx-auto' : 'max-w-3xl mx-auto', 'hover:-translate-y-1 transition-transform duration-300')}>
               <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 text-lg">
                 {isEditMode ? (
                   <div className="flex items-center space-x-3">
@@ -541,14 +535,14 @@ export default function PortfolioHomePage() {
         }
 
         {skills && skills.length > 0 && (
-          <section id="skills" className={cn(currentLayout === 'minimal-rows' ? 'w-full max-w-2xl' : '')}>
+          <section id="skills" className={cn(currentLayout === 'minimal-rows' ? 'w-full max-w-2xl' : '', 'transition-all duration-300')}>
             <div className="text-center mb-10 md:mb-12">
               <h2 className="text-3xl md:text-4xl font-bold text-primary flex items-center justify-center">
                 <Sparkles size={36} className="mr-3" />Skills & Expertise
               </h2>
               <p className="text-lg text-muted-foreground mt-2">Key technologies and abilities I bring to the table.</p>
             </div>
-            <Card className={cn("themed-card shadow-xl border-l-4 border-accent/70 bg-card/80 backdrop-blur-sm p-6 md:p-8", currentLayout === 'minimal-rows' ? 'mx-auto' : '')}>
+            <Card className={cn("themed-card shadow-xl border-l-4 border-accent/70 bg-card/80 backdrop-blur-sm p-6 md:p-8", currentLayout === 'minimal-rows' ? 'mx-auto' : '', 'hover:-translate-y-1 transition-transform duration-300')}>
               <CardContent className="pt-2">
                 <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-5">
                   {skills.map((skill, index) => (
@@ -556,7 +550,7 @@ export default function PortfolioHomePage() {
                       key={index}
                       className={cn(
                         "bg-accent/10 text-accent text-md md:text-lg font-semibold px-5 py-2.5 rounded-lg shadow-md",
-                        "hover:bg-accent/20 transition-all cursor-default transform hover:scale-105",
+                        "hover:bg-accent/20 transition-all cursor-default transform hover:scale-105 duration-200",
                         theme?.cardStyle === 'rounded-elevated' ? 'rounded-xl' : 'rounded-lg',
                         theme?.cardStyle === 'flat-bordered' ? 'border-2 border-accent/30' : ''
                       )}

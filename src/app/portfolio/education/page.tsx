@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useState } from 'react'; // Added useState
+import { useState } from 'react'; 
 import { usePortfolioContext } from '@/contexts/portfolio-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button'; // Added Button
+import { Button } from '@/components/ui/button'; 
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { GraduationCap, CalendarDays, MapPin, Sparkles } from 'lucide-react'; // Added Sparkles
-import AiHelperDialog from '@/components/ai-helper-dialog'; // Added AiHelperDialog
+import { GraduationCap, CalendarDays, MapPin, Sparkles } from 'lucide-react'; 
+import AiHelperDialog from '@/components/ai-helper-dialog'; 
 
 interface AiEditConfig {
   content: string;
@@ -56,7 +56,7 @@ export default function EducationPage() {
           {education.map((edu, index) => (
             <Card 
               key={index} 
-              className="shadow-lg hover:shadow-2xl transition-shadow duration-300 border-t-4 border-primary bg-card/90 backdrop-blur-sm overflow-hidden"
+              className="shadow-lg hover:shadow-2xl transition-all duration-300 ease-in-out border-t-4 border-primary bg-card/90 backdrop-blur-sm overflow-hidden hover:-translate-y-1"
             >
               <CardHeader className="p-6 md:p-8 bg-muted/20">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
@@ -119,7 +119,7 @@ export default function EducationPage() {
                        <Button
                         variant="ghost"
                         size="icon"
-                        className="absolute top-2 right-0 text-primary/70 hover:text-primary"
+                        className="absolute top-2 right-0 text-primary/70 hover:text-primary active:scale-90 transition-transform"
                         onClick={() => openAiDialog(
                           edu.description || '',
                           (newText) => handleInputChange(index, 'description', newText),
@@ -134,9 +134,9 @@ export default function EducationPage() {
                        <Button
                         variant="ghost"
                         size="icon"
-                        className="absolute top-2 right-0 text-primary/70 hover:text-primary"
+                        className="absolute top-2 right-0 text-primary/70 hover:text-primary active:scale-90 transition-transform"
                         onClick={() => openAiDialog(
-                          '', // Start with empty content if description doesn't exist
+                          '', 
                           (newText) => handleInputChange(index, 'description', newText),
                           `Description for ${edu.degree}`
                         )}

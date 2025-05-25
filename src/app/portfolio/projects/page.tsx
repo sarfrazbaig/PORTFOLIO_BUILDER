@@ -2,7 +2,7 @@
 'use client';
 
 import { usePortfolioContext } from '@/contexts/portfolio-context';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // CardDescription added
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,7 +11,7 @@ import NextImage from 'next/image';
 import Link from 'next/link';
 
 export default function ProjectsPage() {
-  const { cvData, isEditMode, updateCvField, theme } // Added theme to get layoutStyle
+  const { cvData, isEditMode, updateCvField, theme } 
    = usePortfolioContext();
 
   if (!cvData || !cvData.projects || cvData.projects.length === 0) {
@@ -58,7 +58,6 @@ export default function ProjectsPage() {
           </p>
         </div>
         
-        {/* Apply dynamic class for layout based on theme */}
         <div 
             className={`projects-list-container ${
                 layoutStyle === 'grid-standard' ? 'grid md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10' : ''
@@ -67,14 +66,14 @@ export default function ProjectsPage() {
             } ${
                 layoutStyle === 'minimal-rows' ? 'flex flex-col gap-4' : ''
             } ${ 
-              layoutStyle === 'focus-hero' ? 'grid md:grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10' : '' // Example: focus-hero might be a 2-col grid
+              layoutStyle === 'focus-hero' ? 'grid md:grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10' : '' 
             }` }
-            style={{gap: spacingMultiplierCSSVar}} // Example of using spacing multiplier
+            style={{gap: spacingMultiplierCSSVar}} 
         >
           {projects.map((project, index) => (
             <Card 
               key={index} 
-              className="themed-card flex flex-col group bg-card/90 backdrop-blur-sm overflow-hidden h-full transition-all duration-300 ease-in-out hover:shadow-2xl"
+              className="themed-card flex flex-col group bg-card/90 backdrop-blur-sm overflow-hidden h-full transition-all duration-300 ease-in-out hover:shadow-2xl hover:-translate-y-2"
             >
               <div className="relative overflow-hidden aspect-[16/10] bg-muted">
                 <NextImage 
@@ -114,7 +113,7 @@ export default function ProjectsPage() {
                <CardContent className="p-6 pt-0 border-t border-border/30 mt-auto">
                 <Link href={`/portfolio/projects/${encodeURIComponent(project.name || `project-${index}`)}`} passHref legacyBehavior>
                   <a className="block w-full">
-                    <Button variant="ghost" className="w-full group/link text-accent hover:text-accent-foreground transition-all duration-300 py-3 text-md mt-4">
+                    <Button variant="ghost" className="w-full group/link text-accent hover:text-accent-foreground hover:bg-accent/10 active:scale-95 transition-all duration-300 py-3 text-md mt-4">
                         View Details <Layers size={18} className="ml-2 opacity-70 group-hover/link:opacity-100 transition-opacity" />
                     </Button>
                   </a>
@@ -127,5 +126,3 @@ export default function ProjectsPage() {
     </div>
   );
 }
-
-    

@@ -4,26 +4,27 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { usePortfolioContext } from '@/contexts/portfolio-context';
-import type { ParseCvOutput } from '@/ai/flows/cv-parser';
+import type { ParseCvOutput as CvDataRootType } from '@/ai/flows/cv-parser'; // Renamed for clarity
 import { generateImage, type GenerateImageOutput } from '@/ai/flows/generate-image-flow';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label'; // Added Label
+import { Label } from '@/components/ui/label'; 
 import { ArrowLeft, ExternalLink, Lightbulb, Code, Zap, Target, Users, ShieldCheck, Sparkles, Image as ImageIcon, Loader2, Upload } from 'lucide-react';
 import NextImage from 'next/image';
 import { Separator } from '@/components/ui/separator';
 import AiHelperDialog from '@/components/ai-helper-dialog';
 import { useToast } from '@/hooks/use-toast';
 
-
-type ProjectType = ParseCvOutput['projects'][0] & {
+// Extend project type from the root CV data type
+type ProjectType = CvDataRootType['projects'][0] & {
   keyFeatures?: string;
   myRole?: string;
   challengesSolutions?: string;
   projectGoals?: string;
   technologiesUsed?: string;
+  imagePrompt?: string; // Ensure imagePrompt is part of the type
 };
 
 const placeholderTexts = {
@@ -65,7 +66,7 @@ export default function ProjectDetailPage() {
     if (cvData && decodedProjectName) {
       const foundIndex = cvData.projects.findIndex(p => p.name === decodedProjectName);
       if (foundIndex !== -1) {
-        const currentProject = cvData.projects[foundIndex];
+        const currentProject = cvData.projects[foundIndex] as ProjectType; // Cast to ensure type
         const initializedProject: ProjectType = {
             ...currentProject,
             keyFeatures: currentProject.keyFeatures || '',
@@ -73,7 +74,7 @@ export default function ProjectDetailPage() {
             challengesSolutions: currentProject.challengesSolutions || '',
             projectGoals: currentProject.projectGoals || '',
             technologiesUsed: currentProject.technologiesUsed || '',
-            imagePrompt: currentProject.imagePrompt || '', // Ensure imagePrompt is initialized
+            imagePrompt: currentProject.imagePrompt || '', 
         };
         setProject(initializedProject);
         setProjectIndex(foundIndex);
@@ -90,7 +91,6 @@ export default function ProjectDetailPage() {
   const handleProjectFieldChange = (field: keyof ProjectType, value: string) => {
     if (projectIndex === null) return;
     updateCvField(`projects.${projectIndex}.${field}`, value);
-    // If the project object in context is updated, also update local state
     setProject(prev => prev ? {...prev, [field]: value} : null);
   };
 
@@ -158,7 +158,7 @@ export default function ProjectDetailPage() {
   const getProjectField = (fieldName: keyof ProjectType, placeholderKey?: keyof typeof placeholderTexts) => {
     const value = project && project[fieldName];
     if (typeof value === 'string') return value;
-    if (isEditMode) return '';
+    if (isEditMode) return ''; // Return empty string in edit mode if value is not string (or undefined)
     return placeholderKey ? placeholderTexts[placeholderKey] : 'Not specified.';
   };
 
@@ -175,7 +175,7 @@ export default function ProjectDetailPage() {
   if (!project) {
     return (
       <div className="container mx-auto py-12 px-4 md:px-6 text-center">
-        <Card className="max-w-md mx-auto shadow-lg">
+        <Card className="max-w-md mx-auto shadow-lg themed-card">
           <CardHeader>
             <CardTitle className="text-destructive">Project Not Found</CardTitle>
           </CardHeader>
@@ -183,7 +183,7 @@ export default function ProjectDetailPage() {
             <p className="text-muted-foreground mb-4">
               The project named &quot;{decodedProjectName}&quot; could not be found.
             </p>
-            <Button onClick={() => router.push('/portfolio/projects')}>
+            <Button onClick={() => router.push('/portfolio/projects')} className="active:scale-95 transition-transform">
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Projects
             </Button>
           </CardContent>
@@ -197,12 +197,12 @@ export default function ProjectDetailPage() {
   let imageSourceToDisplay = `https://placehold.co/800x450.png?text=${encodeURIComponent(project.name || 'Project')}`;
   let altTextForImage = `${project.name || 'Project'} placeholder`;
 
-  if (project.imageDataUri) {
-    imageSourceToDisplay = project.imageDataUri;
-    altTextForImage = `${project.name || 'Project'} main image`;
-  } else if (isGeneratingImage) {
+  if (isGeneratingImage) {
     imageSourceToDisplay = `https://placehold.co/800x450.png?text=Generating...`;
     altTextForImage = `Generating image for ${project.name || 'Project'}`;
+  } else if (project.imageDataUri) {
+    imageSourceToDisplay = project.imageDataUri;
+    altTextForImage = `${project.name || 'Project'} main image`;
   } else if (imageError) {
     imageSourceToDisplay = `https://placehold.co/800x450.png?text=AI+Error`;
     altTextForImage = `Error generating image for ${project.name || 'Project'}`;
@@ -221,7 +221,7 @@ export default function ProjectDetailPage() {
   ) => {
     const content = getProjectField(fieldKey, placeholderKey);
     return (
-      <section id={`project-${fieldKey.toString()}`}>
+      <section id={`project-${fieldKey.toString()}`} className="themed-card bg-card/50 p-6 rounded-lg shadow-md hover:-translate-y-1 transition-transform duration-300">
         <h2 className="text-2xl font-semibold text-foreground mb-4 flex items-center">{icon}{title}</h2>
         <div className="relative">
           {isEditMode && projectIndex !== null ? (
@@ -241,7 +241,7 @@ export default function ProjectDetailPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="absolute top-2 right-0 text-primary/70 hover:text-primary"
+              className="absolute top-2 right-0 text-primary/70 hover:text-primary active:scale-90 transition-transform"
               onClick={() => openAiDialog(
                 content,
                 (newText) => handleProjectFieldChange(fieldKey, newText),
@@ -261,7 +261,7 @@ export default function ProjectDetailPage() {
   const renderTechnologiesSection = () => {
     const techContent = getProjectField('technologiesUsed', 'technologiesUsed');
     return (
-       <Card className="shadow-lg">
+       <Card className="themed-card shadow-lg hover:-translate-y-1 transition-transform duration-300">
         <CardHeader>
             <CardTitle className="text-xl flex items-center"><Code className="mr-2 text-primary" />Technologies Used</CardTitle>
         </CardHeader>
@@ -278,7 +278,7 @@ export default function ProjectDetailPage() {
             ) : (
             <div className="flex flex-wrap gap-2">
                 {(techContent || '').split(/[,;\n]+/).map((tech: string) => tech.trim() && (
-                <span key={tech.trim()} className="bg-primary/10 text-primary text-sm px-3 py-1 rounded-full font-medium">
+                <span key={tech.trim()} className="bg-primary/10 text-primary text-sm px-3 py-1 rounded-full font-medium hover:bg-primary/20 transition-colors">
                     {tech.trim()}
                 </span>
                 ))}
@@ -288,7 +288,7 @@ export default function ProjectDetailPage() {
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="absolute top-0 right-0 text-primary/70 hover:text-primary p-1"
+                    className="absolute top-0 right-0 text-primary/70 hover:text-primary p-1 active:scale-90 transition-transform"
                     onClick={() => openAiDialog(
                     techContent,
                     (newText) => handleProjectFieldChange('technologiesUsed', newText),
@@ -309,7 +309,7 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="container mx-auto py-12 md:py-16 px-6">
-      <Button variant="outline" onClick={() => router.push('/portfolio/projects')} className="mb-8 group">
+      <Button variant="outline" onClick={() => router.push('/portfolio/projects')} className="mb-8 group active:scale-95 transition-transform">
         <ArrowLeft className="mr-2 h-4 w-4 group-hover:animate-pingOnce" /> Back to All Projects
       </Button>
 
@@ -338,7 +338,7 @@ export default function ProjectDetailPage() {
           ) : (
             project.url && (
               <a href={project.url} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" className="text-accent border-accent hover:bg-accent hover:text-accent-foreground">
+                <Button variant="outline" className="text-accent border-accent hover:bg-accent hover:text-accent-foreground active:scale-95 transition-all duration-200">
                   View Live Project <ExternalLink size={18} className="ml-2" />
                 </Button>
               </a>
@@ -348,7 +348,7 @@ export default function ProjectDetailPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
           <div className="md:col-span-2 space-y-8">
-            <section id="project-overview">
+            <section id="project-overview" className="themed-card bg-card/50 p-6 rounded-lg shadow-md hover:-translate-y-1 transition-transform duration-300">
               <h2 className="text-2xl font-semibold text-foreground mb-4 flex items-center"><Lightbulb className="mr-3 text-accent" />Overview</h2>
 
               <div className="relative aspect-[16/9] rounded-lg overflow-hidden shadow-lg mb-6 border border-border bg-muted group">
@@ -395,7 +395,7 @@ export default function ProjectDetailPage() {
                     />
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button onClick={() => projectImageFileInputRef.current?.click()} className="flex-grow" variant="outline">
+                    <Button onClick={() => projectImageFileInputRef.current?.click()} className="flex-grow active:scale-95 transition-transform" variant="outline">
                       <Upload className="mr-2 h-5 w-5" />
                       {project.imageDataUri ? 'Upload New Image' : 'Upload Image'}
                     </Button>
@@ -410,7 +410,7 @@ export default function ProjectDetailPage() {
                     <Button
                       onClick={handleGenerateProjectImage}
                       disabled={isGeneratingImage || !project.imagePrompt}
-                      className="flex-grow"
+                      className="flex-grow active:scale-95 transition-transform"
                       title={!project.imagePrompt ? "Enter an AI Image Prompt above to enable generation." : (project.imageDataUri ? 'Regenerate Image (AI)' : 'Generate Image (AI)')}
                     >
                       {isGeneratingImage ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
@@ -438,7 +438,7 @@ export default function ProjectDetailPage() {
                      <Button
                         variant="ghost"
                         size="icon"
-                        className="absolute top-2 right-0 text-primary/70 hover:text-primary"
+                        className="absolute top-2 right-0 text-primary/70 hover:text-primary active:scale-90 transition-transform"
                         onClick={() => openAiDialog(
                         project.description || '',
                         (newText) => handleProjectFieldChange('description', newText),
@@ -478,5 +478,3 @@ export default function ProjectDetailPage() {
     </div>
   );
 }
-
-    

@@ -32,11 +32,11 @@ export default function PortfolioHeader() {
   }, []);
 
   const navLinks = [
-    { href: '/portfolio', label: 'Home', icon: <HomeIcon size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors" /> },
-    { href: '/portfolio/experience', label: 'Experience', icon: <Briefcase size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors" /> },
-    { href: '/portfolio/education', label: 'Education', icon: <BookOpen size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors" /> },
-    { href: '/portfolio/projects', label: 'Projects', icon: <Lightbulb size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors" /> },
-    { href: '/portfolio/skills', label: 'Skills', icon: <Sparkles size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors" /> },
+    { href: '/portfolio', label: 'Home', icon: <HomeIcon size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors duration-200" /> },
+    { href: '/portfolio/experience', label: 'Experience', icon: <Briefcase size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors duration-200" /> },
+    { href: '/portfolio/education', label: 'Education', icon: <BookOpen size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors duration-200" /> },
+    { href: '/portfolio/projects', label: 'Projects', icon: <Lightbulb size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors duration-200" /> },
+    { href: '/portfolio/skills', label: 'Skills', icon: <Sparkles size={18} className="mr-2 md:mr-0 md:mb-1 group-hover:text-primary transition-colors duration-200" /> },
   ];
 
   const toggleUiTheme = () => {
@@ -47,7 +47,6 @@ export default function PortfolioHeader() {
     if (window.confirm('Are you sure you want to discard all portfolio data and start over? This action cannot be undone.')) {
       setCvData(null);
       setActiveTheme(null);
-      // Also clear available themes from local storage if desired, though context re-init will handle it
       localStorage.removeItem('cvPortfolioAvailableThemes'); 
       router.push('/dashboard');
     }
@@ -58,7 +57,7 @@ export default function PortfolioHeader() {
     if (newTheme) {
       setActiveTheme(newTheme);
     }
-    setIsMobileMenuOpen(false); // Close mobile menu if open
+    setIsMobileMenuOpen(false); 
   };
 
   if (!mounted) {
@@ -71,7 +70,7 @@ export default function PortfolioHeader() {
         <div className="flex h-20 items-center justify-between">
           <div className="flex items-center">
             <Link href="/portfolio" className="flex items-center space-x-3 group">
-              <User className="h-8 w-8 text-primary group-hover:animate-pulse" />
+              <User className="h-8 w-8 text-primary group-hover:animate-pulse transition-transform duration-300 group-hover:scale-110" />
               <div>
                 <span className="font-bold text-xl tracking-tight text-foreground">
                   {cvData?.personalInformation?.name || 'Your Name'}
@@ -84,7 +83,7 @@ export default function PortfolioHeader() {
           <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
             {navLinks.map((link) => (
               <Link key={link.href} href={link.href} passHref>
-                <Button variant="ghost" className="text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/5 group flex flex-col items-center h-auto py-2 px-3">
+                <Button variant="ghost" className="text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/5 group flex flex-col items-center h-auto py-2 px-3 transition-all duration-200 ease-in-out hover:shadow-sm active:scale-95">
                   {link.icon}
                   <span className="text-xs">{link.label}</span>
                 </Button>
@@ -96,7 +95,7 @@ export default function PortfolioHeader() {
             {theme && availableThemes && availableThemes.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="hidden sm:inline-flex items-center space-x-2 bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-lg shadow-sm text-xs font-semibold">
+                  <Button variant="outline" className="hidden sm:inline-flex items-center space-x-2 bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-lg shadow-sm text-xs font-semibold active:scale-95 transition-all duration-200">
                     <Palette size={16} className="text-primary/80"/>
                     <span>{theme.themeName}</span>
                     <ChevronDown size={16} className="opacity-70" />
@@ -121,7 +120,7 @@ export default function PortfolioHeader() {
                 size="icon"
                 onClick={toggleUiTheme}
                 aria-label="Toggle UI theme"
-                className="hidden md:inline-flex text-muted-foreground hover:text-primary"
+                className="hidden md:inline-flex text-muted-foreground hover:text-primary active:scale-90 transition-all duration-200"
                 title="Toggle light/dark mode"
               >
                 <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -133,7 +132,7 @@ export default function PortfolioHeader() {
               size="icon"
               onClick={toggleEditMode}
               aria-label={isEditMode ? "View Portfolio" : "Edit Portfolio"}
-              className="text-muted-foreground hover:text-primary"
+              className="text-muted-foreground hover:text-primary active:scale-90 transition-all duration-200"
               title={isEditMode ? "View Portfolio" : "Edit Portfolio"}
             >
               {isEditMode ? <Eye size={20} /> : <Edit3 size={20} />}
@@ -144,7 +143,7 @@ export default function PortfolioHeader() {
               size="icon"
               onClick={handleDiscardPortfolio}
               aria-label="Discard Portfolio"
-              className="text-destructive-foreground bg-destructive/90 hover:bg-destructive"
+              className="text-destructive-foreground bg-destructive/90 hover:bg-destructive active:scale-90 transition-all duration-200"
               title="Discard Portfolio & Start Over"
             >
               <RotateCcw size={20} />
@@ -156,7 +155,7 @@ export default function PortfolioHeader() {
                 size="icon"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 aria-label="Toggle mobile menu"
-                className="text-muted-foreground hover:text-primary"
+                className="text-muted-foreground hover:text-primary active:scale-90 transition-transform duration-200"
               >
                 {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
               </Button>
@@ -164,7 +163,6 @@ export default function PortfolioHeader() {
           </div>
         </div>
         
-        {/* Mobile Menu */}
         <div
           className={cn(
             "md:hidden overflow-hidden transition-all duration-300 ease-in-out",
@@ -176,7 +174,7 @@ export default function PortfolioHeader() {
               <Link key={link.href} href={link.href} passHref>
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-start text-muted-foreground hover:text-primary py-3 text-base"
+                  className="w-full justify-start text-muted-foreground hover:text-primary py-3 text-base active:scale-95 transition-transform duration-150"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {link.icon} {link.label}
@@ -190,7 +188,7 @@ export default function PortfolioHeader() {
                   setIsMobileMenuOpen(false);
                 }}
                 aria-label="Toggle UI theme"
-                className="w-full justify-start text-muted-foreground hover:text-primary py-3 text-base flex items-center"
+                className="w-full justify-start text-muted-foreground hover:text-primary py-3 text-base flex items-center active:scale-95 transition-transform duration-150"
                 title="Toggle light/dark mode"
               >
                 {actualTheme === 'light' ? <Moon size={18} className="mr-2"/> : <Sun size={18} className="mr-2"/>}
@@ -203,7 +201,7 @@ export default function PortfolioHeader() {
                         <Button
                             key={availTheme.themeName}
                             variant={theme.themeName === availTheme.themeName ? "secondary" : "ghost"}
-                            className="w-full justify-start text-muted-foreground hover:text-primary py-3 text-base"
+                            className="w-full justify-start text-muted-foreground hover:text-primary py-3 text-base active:scale-95 transition-transform duration-150"
                             onClick={() => handleThemeSelection(availTheme.themeName)}
                         >
                             <Palette size={18} className="mr-2" /> {availTheme.themeName}
